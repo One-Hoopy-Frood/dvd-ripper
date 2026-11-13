@@ -6,6 +6,18 @@ use crate::queue::{BoxSetRecord, JobItem};
 pub trait JobQueueRepository: Send + Sync {
     fn name(&self) -> &str;
     fn add_job(&self, title: &str, media_type: &str, drive: &str) -> String;
+    fn add_job_with_details(
+        &self,
+        title: &str,
+        media_type: &str,
+        drive: &str,
+        title_number: Option<u32>,
+        season: Option<u32>,
+        episode: Option<u32>,
+    ) -> String {
+        let _ = (title_number, season, episode);
+        self.add_job(title, media_type, drive)
+    }
     fn list_jobs(&self) -> Vec<JobItem>;
     fn remove_job(&self, id: &str) -> bool;
     fn next_ready_job(&self) -> Option<JobItem>;

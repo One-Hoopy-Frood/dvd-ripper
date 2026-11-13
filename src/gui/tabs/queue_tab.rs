@@ -162,6 +162,9 @@ mod tests {
                 output_path: None,
                 progress: 0.5,
                 priority: 1,
+                title_number: Some(1),
+                season: None,
+                episode: None,
             },
             JobItem {
                 id: "job_2".to_string(),
@@ -174,6 +177,9 @@ mod tests {
                 output_path: None,
                 progress: 0.0,
                 priority: 1,
+                title_number: Some(1),
+                season: None,
+                episode: None,
             },
         ];
 

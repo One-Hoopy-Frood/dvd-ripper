@@ -24,6 +24,12 @@ pub struct JobItem {
     pub progress: f64,
     #[serde(default)]
     pub priority: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_number: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub season: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub episode: Option<u32>,
 }
 
 /// Represents a tracked TV series season box set state across multi-disc insertions.
@@ -114,6 +120,18 @@ impl crate::domain::ports::queue::JobQueueRepository for FileJobQueueRepository 
         add_job(title, media_type, drive)
     }
 
+    fn add_job_with_details(
+        &self,
+        title: &str,
+        media_type: &str,
+        drive: &str,
+        title_number: Option<u32>,
+        season: Option<u32>,
+        episode: Option<u32>,
+    ) -> String {
+        add_job_with_details(title, media_type, drive, title_number, season, episode)
+    }
+
     fn list_jobs(&self) -> Vec<JobItem> {
         list_jobs()
     }
@@ -145,6 +163,18 @@ impl crate::domain::ports::queue::JobQueueRepository for FileJobQueueRepository 
 
 /// Enqueues a new ripping job item into the queue.
 pub fn add_job(title: &str, media_type: &str, drive: &str) -> String {
+    add_job_with_details(title, media_type, drive, None, None, None)
+}
+
+/// Enqueues a new ripping job item into the queue with optional title number and TV episode coordinates.
+pub fn add_job_with_details(
+    title: &str,
+    media_type: &str,
+    drive: &str,
+    title_number: Option<u32>,
+    season: Option<u32>,
+    episode: Option<u32>,
+) -> String {
     let id = format!("job_{}", uuid_v4_short());
     let item = JobItem {
         id: id.clone(),
@@ -157,6 +187,9 @@ pub fn add_job(title: &str, media_type: &str, drive: &str) -> String {
         output_path: None,
         progress: 0.0,
         priority: 1,
+        title_number,
+        season,
+        episode,
     };
     let handle = get_job_queue_handle();
     if let Ok(mut queue) = handle.lock() {

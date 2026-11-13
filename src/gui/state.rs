@@ -141,6 +141,7 @@ pub struct DvdRipperApp {
     pub angle: Option<u32>,
     pub custom_crf: Option<u8>,
     pub spool_mode: bool,
+    pub is_processing_queue: bool,
     pub probed_stream_details: Option<crate::domain::entities::disc::TitleStreamDetails>,
     pub queued_jobs: Vec<crate::queue::JobItem>,
     pub container: Option<Arc<crate::AppContainer>>,
@@ -298,6 +299,7 @@ impl Default for DvdRipperApp {
             angle: None,
             custom_crf: None,
             spool_mode: false,
+            is_processing_queue: false,
             probed_stream_details: None,
             queued_jobs: crate::queue::list_jobs(),
             container: Some(container),
@@ -837,6 +839,16 @@ impl DvdRipperApp {
             .start_preview_clip(&self.input_drive, self.title_number.max(1), args);
     }
 
+    pub fn has_queued_jobs_for_drive(&self, drive: &str) -> bool {
+        let queue_repo = self.controller.container().job_queue_repo.clone();
+        let jobs = queue_repo.list_jobs();
+        let norm_drive = crate::dvd::normalize_dvd_path(drive);
+        jobs.iter().any(|j| {
+            let j_drive = crate::dvd::normalize_dvd_path(&j.drive);
+            j_drive == norm_drive && j.status != "Done"
+        })
+    }
+
     pub fn enqueue_current_disc(&mut self) {
         let title = self
             .film_name_opt()
@@ -846,8 +858,11 @@ impl DvdRipperApp {
         } else {
             "Movie"
         };
+        let title_num = if self.title_number > 0 { Some(self.title_number) } else { None };
+        let season = if self.is_tv_mode { Some(self.season_number) } else { None };
+        let episode = if self.is_tv_mode { Some(self.start_episode) } else { None };
         let queue_repo = &self.controller.container().job_queue_repo;
-        let _id = queue_repo.add_job(&title, media_type, &self.input_drive);
+        let _id = queue_repo.add_job_with_details(&title, media_type, &self.input_drive, title_num, season, episode);
         self.queued_jobs = queue_repo.list_jobs();
         self.status_message = format!("Added '{}' to batch job queue.", title);
     }
@@ -873,6 +888,7 @@ impl DvdRipperApp {
         }
         let queue_repo = self.controller.container().job_queue_repo.clone();
         if let Some(job) = queue_repo.next_ready_job() {
+            self.is_processing_queue = true;
             queue_repo.update_job_status(&job.id, "Encoding...", 0.6);
             self.film_name = job.title.clone();
             self.is_tv_mode = job.media_type.to_lowercase().contains("tv");
@@ -881,12 +897,22 @@ impl DvdRipperApp {
             } else {
                 self.input_drive = job.drive.clone();
             }
+            if let Some(t) = job.title_number {
+                self.title_number = t;
+            }
+            if let Some(s) = job.season {
+                self.season_number = s;
+            }
+            if let Some(e) = job.episode {
+                self.start_episode = e;
+            }
             self.queued_jobs = queue_repo.list_jobs();
             self.start_ripping();
             let _ = queue_repo.remove_job(&job.id);
             let _ = crate::queue::cleanup_job_spool(&job.id, Path::new(&self.out_dir));
             self.queued_jobs = queue_repo.list_jobs();
         } else {
+            self.is_processing_queue = false;
             self.status_message = "No queued jobs ready to process.".to_string();
         }
     }
@@ -1000,6 +1026,9 @@ impl DvdRipperApp {
             self.detected_episodes.clone()
         };
 
+        let more_jobs_for_drive = self.has_queued_jobs_for_drive(&self.input_drive);
+        let suppress_eject = self.no_eject || (self.is_processing_queue && more_jobs_for_drive);
+
         let spec = RipTaskSpecification {
             drive: self.input_drive.clone(),
             out_dir: self.out_dir.clone(),
@@ -1023,6 +1052,7 @@ impl DvdRipperApp {
             detected_episodes: filtered_episodes,
             poster_bytes: self.raw_poster_bytes.clone(),
             encoding_options: self.build_encoding_options(),
+            no_eject: suppress_eject,
         };
 
         self.controller.start_ripping(spec);
@@ -1031,6 +1061,7 @@ impl DvdRipperApp {
     pub fn cancel_ripping(&mut self) {
         self.controller.cancel();
         self.is_ripping = false;
+        self.is_processing_queue = false;
         self.detecting = false;
         self.current_ripping_title = None;
         self.progress_percent = 0.0;
@@ -1427,12 +1458,32 @@ impl DvdRipperApp {
                             .save_entry(&entry);
                     }
 
-                    if !self.no_eject {
+                    let more_jobs_for_drive = self.has_queued_jobs_for_drive(&self.input_drive);
+                    if !self.no_eject && !more_jobs_for_drive && !self.is_processing_queue {
                         let _ = crate::dvd::eject_disc(&self.input_drive);
+                    }
+
+                    if self.is_processing_queue {
+                        let queue_repo = self.controller.container().job_queue_repo.clone();
+                        if let Some(next_job) = queue_repo.next_ready_job() {
+                            let next_title = next_job.title.clone();
+                            self.status_message = format!(
+                                "Completed '{}'. Processing next queued job: '{}'...",
+                                title, next_title
+                            );
+                            self.start_next_queued_job();
+                        } else {
+                            self.is_processing_queue = false;
+                            if !self.no_eject {
+                                let _ = crate::dvd::eject_disc(&self.input_drive);
+                            }
+                            self.status_message = format!("All queued jobs completed! Last saved to {}", path.display());
+                        }
                     }
                 }
                 ProgressEvent::Error(msg) => {
                     self.is_ripping = false;
+                    self.is_processing_queue = false;
                     self.detecting = false;
                     self.current_ripping_title = None;
                     self.start_time = None;
@@ -1916,5 +1967,55 @@ mod tests {
             "Expected realistic Episode 2 ETA (~1492s), got {:.1}s",
             ep2_eta
         );
+    }
+
+    #[test]
+    fn test_queue_multi_job_suppresses_eject_and_auto_progresses() {
+        let mut app = DvdRipperApp::default();
+        let queue_repo = app.controller.container().job_queue_repo.clone();
+        queue_repo.clear_queue();
+
+        app.input_drive = "D:\\".to_string();
+        app.film_name = "Episode 1".to_string();
+        app.title_number = 1;
+        app.enqueue_current_disc();
+
+        app.film_name = "Episode 2".to_string();
+        app.title_number = 2;
+        app.enqueue_current_disc();
+
+        assert_eq!(queue_repo.list_jobs().len(), 2);
+        assert!(app.has_queued_jobs_for_drive("D:\\"));
+
+        // Pop and start first job
+        app.start_next_queued_job();
+        assert!(app.is_processing_queue);
+        assert_eq!(queue_repo.list_jobs().len(), 1);
+        assert!(app.has_queued_jobs_for_drive("D:\\"));
+
+        // Simulate successful completion of Episode 1
+        app.is_ripping = true;
+        let _ = app
+            .event_tx
+            .send(ProgressEvent::Success(PathBuf::from("C:\\Out\\Episode 1.mp4")));
+        app.process_events();
+
+        // Second job should have been automatically picked up without ejecting!
+        assert_eq!(queue_repo.list_jobs().len(), 0);
+        assert_eq!(app.title_number, 2);
+        assert_eq!(app.film_name, "Episode 2");
+        assert!(app.is_processing_queue);
+
+        // Simulate successful completion of Episode 2
+        app.is_ripping = true;
+        let _ = app
+            .event_tx
+            .send(ProgressEvent::Success(PathBuf::from("C:\\Out\\Episode 2.mp4")));
+        app.process_events();
+
+        // Queue complete
+        assert!(!app.is_processing_queue);
+        assert!(!app.has_queued_jobs_for_drive("D:\\"));
+        queue_repo.clear_queue();
     }
 }

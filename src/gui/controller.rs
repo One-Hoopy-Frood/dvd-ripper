@@ -41,6 +41,7 @@ pub struct RipTaskSpecification {
     pub detected_episodes: Vec<TvEpisodeInfo>,
     pub poster_bytes: Option<Vec<u8>>,
     pub encoding_options: EncodingOptions,
+    pub no_eject: bool,
 }
 
 /// Controller managing background worker threads and asynchronous progress dispatch for the desktop UI.
@@ -392,6 +393,7 @@ impl GuiApplicationController {
                 engine: spec.engine.clone(),
                 transcode: spec.transcode,
                 preset: spec.preset.clone(),
+                no_eject: spec.no_eject,
                 ..Default::default()
             };
             base_args.apply_encoding_options(spec.encoding_options.clone());
@@ -860,6 +862,7 @@ mod tests {
             detected_episodes: Vec::new(),
             poster_bytes: None,
             encoding_options: crate::cli::EncodingOptions::default(),
+            no_eject: false,
         };
 
         let cloned = spec.clone();
@@ -913,6 +916,7 @@ mod tests {
             detected_episodes: Vec::new(),
             poster_bytes: None,
             encoding_options: crate::cli::EncodingOptions::default(),
+            no_eject: false,
         };
 
         controller.start_ripping(spec);
@@ -950,6 +954,7 @@ mod tests {
             detected_episodes: Vec::new(),
             poster_bytes: None,
             encoding_options: crate::cli::EncodingOptions::default(),
+            no_eject: false,
         };
         controller.start_ripping(spec_hb);
 
@@ -982,6 +987,7 @@ mod tests {
             }],
             poster_bytes: None,
             encoding_options: crate::cli::EncodingOptions::default(),
+            no_eject: false,
         };
         controller.start_ripping(spec_mmkv);
 
@@ -1009,6 +1015,7 @@ mod tests {
             detected_episodes: Vec::new(),
             poster_bytes: None,
             encoding_options: crate::cli::EncodingOptions::default(),
+            no_eject: false,
         };
         controller.start_ripping(spec_native);
 

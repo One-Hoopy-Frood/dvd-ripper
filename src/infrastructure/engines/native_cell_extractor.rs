@@ -40,6 +40,34 @@ pub struct NativeCellPlan {
     pub duration_secs: f64,
 }
 
+fn read_vts_ifo_data(resolved_ifo_dir: &Path, dvd_path: &Path, vtsn: u8) -> Option<Vec<u8>> {
+    let vts_names = [
+        format!("VTS_{:02}_0.IFO", vtsn),
+        format!("VTS_{:02}_0.BUP", vtsn),
+        format!("vts_{:02}_0.ifo", vtsn),
+        format!("vts_{:02}_0.bup", vtsn),
+        format!("VTS_{:02}_0.ifo", vtsn),
+        format!("VTS_{:02}_0.bup", vtsn),
+    ];
+    let dirs = [
+        resolved_ifo_dir,
+        &dvd_path.join("VIDEO_TS"),
+        &dvd_path.join("video_ts"),
+        dvd_path,
+    ];
+    for dir in dirs {
+        for name in &vts_names {
+            let p = dir.join(name);
+            if let Ok(d) = std::fs::read(&p)
+                && d.len() > 0xCF
+            {
+                return Some(d);
+            }
+        }
+    }
+    None
+}
+
 /// Resolves the exact [`NativeCellPlan`] for `title_num` (1-based) and optional `(start_chapter, end_chapter)` (1-based)
 /// by parsing `VIDEO_TS.IFO` and `VTS_xx_0.IFO`.
 pub fn build_native_cell_plan(
@@ -101,34 +129,65 @@ pub fn build_native_cell_plan(
     }
 
     // Direct fallback for copy-protected or bad-sector root IFOs (e.g. Sony ARccOS / Disney):
-    // Map title_num directly to VTS_xx_0.IFO (title 1 -> VTS 1, etc.)
-    let (vtsn, vts_ttn) = vtsn_ttn.unwrap_or_else(|| (title_num.clamp(1, 99) as u8, 1));
+    let (vtsn, vts_ttn, vts_data) = if let Some((n, t)) = vtsn_ttn {
+        let d = read_vts_ifo_data(&resolved_ifo_dir, dvd_path, n)?;
+        (n, t, d)
+    } else {
+        let direct_vtsn = title_num.clamp(1, 99) as u8;
+        if let Some(d) = read_vts_ifo_data(&resolved_ifo_dir, dvd_path, direct_vtsn) {
+            (direct_vtsn, 1, d)
+        } else {
+            // Otherwise, scan available VTS files on disc to map title_num across multi-title or multi-PGC VTS
+            let mut resolved = None;
+            let mut accumulated_titles = 0usize;
 
-    let vts_names = [
-        format!("VTS_{:02}_0.IFO", vtsn),
-        format!("VTS_{:02}_0.BUP", vtsn),
-        format!("vts_{:02}_0.ifo", vtsn),
-        format!("vts_{:02}_0.bup", vtsn),
-        format!("VTS_{:02}_0.ifo", vtsn),
-        format!("VTS_{:02}_0.bup", vtsn),
-    ];
+            for candidate_vtsn in 1..=99u8 {
+                if let Some(d) = read_vts_ifo_data(&resolved_ifo_dir, dvd_path, candidate_vtsn) {
+                    let mut nr_ttu = 0usize;
+                    if d.len() >= 0xCC {
+                        let ptt_srpt_sec =
+                            u32::from_be_bytes([d[0xC8], d[0xC9], d[0xCA], d[0xCB]]) as usize;
+                        let ptt_srpt_off = ptt_srpt_sec * 2048;
+                        if ptt_srpt_off + 2 <= d.len() {
+                            nr_ttu = u16::from_be_bytes([d[ptt_srpt_off], d[ptt_srpt_off + 1]])
+                                as usize;
+                        }
+                    }
 
-    let mut vts_data_opt = None;
-    for dir in &[&resolved_ifo_dir, &dvd_path.join("VIDEO_TS"), &dvd_path.join("video_ts"), &dvd_path.to_path_buf()] {
-        for name in &vts_names {
-            let p = dir.join(name);
-            if let Ok(d) = std::fs::read(&p)
-                && d.len() > 0xCF
-            {
-                vts_data_opt = Some(d);
-                break;
+                    let mut nr_pgcs = 0usize;
+                    if d.len() >= 0xD0 {
+                        let pgciti_sec =
+                            u32::from_be_bytes([d[0xCC], d[0xCD], d[0xCE], d[0xCF]]) as usize;
+                        let pgciti_off = pgciti_sec * 2048;
+                        if pgciti_off + 2 <= d.len() {
+                            nr_pgcs = u16::from_be_bytes([d[pgciti_off], d[pgciti_off + 1]])
+                                as usize;
+                        }
+                    }
+
+                    let effective_titles = nr_ttu.max(nr_pgcs).max(1);
+                    let target_title = title_num as usize;
+                    if target_title > accumulated_titles
+                        && target_title <= accumulated_titles + effective_titles
+                    {
+                        let local_ttn = (target_title - accumulated_titles) as u8;
+                        resolved = Some((candidate_vtsn, local_ttn, d));
+                        break;
+                    }
+                    accumulated_titles += effective_titles;
+                } else if candidate_vtsn > 3 && accumulated_titles > 0 {
+                    break;
+                }
+            }
+
+            if let Some(res) = resolved {
+                res
+            } else {
+                let d = read_vts_ifo_data(&resolved_ifo_dir, dvd_path, 1)?;
+                (1, title_num.clamp(1, 99) as u8, d)
             }
         }
-        if vts_data_opt.is_some() {
-            break;
-        }
-    }
-    let vts_data = vts_data_opt?;
+    };
     if vts_data.len() <= 0xCF {
         return None;
     }
