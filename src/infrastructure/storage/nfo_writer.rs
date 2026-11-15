@@ -119,14 +119,14 @@ mod tests {
 
     #[test]
     fn test_resolve_nfo_path() {
-        let p1 = Path::new("C:\\Videos\\Movie.mp4");
-        assert_eq!(resolve_nfo_path(p1), PathBuf::from("C:\\Videos\\Movie.nfo"));
+        let p1 = Path::new("Videos").join("Movie.mp4");
+        assert_eq!(resolve_nfo_path(&p1), Path::new("Videos").join("Movie.nfo"));
 
         let p2 = Path::new("Show.mkv");
         assert_eq!(resolve_nfo_path(p2), PathBuf::from("Show.nfo"));
 
         let p3 = Path::new("");
-        assert_eq!(resolve_nfo_path(p3), PathBuf::from(".\\output.nfo"));
+        assert_eq!(resolve_nfo_path(p3), Path::new(".").join("output.nfo"));
     }
 
     #[test]

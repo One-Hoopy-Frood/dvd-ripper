@@ -38,9 +38,16 @@ pub fn is_named_folder(path: &Path, name: &str) -> bool {
     if clean.is_empty() {
         return false;
     }
-    path.file_name()
-        .map(|s| s.to_string_lossy().eq_ignore_ascii_case(clean))
-        .unwrap_or(false)
+    if let Some(file_name) = path.file_name() {
+        let name_str = file_name.to_string_lossy();
+        let last_comp = name_str.rsplit(['/', '\\']).next().unwrap_or(&name_str);
+        if last_comp.eq_ignore_ascii_case(clean) {
+            return true;
+        }
+    }
+    let full = path.to_string_lossy();
+    let last = full.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or("");
+    last.eq_ignore_ascii_case(clean)
 }
 
 /// Helper: Checks if the path component is named "films" (case-insensitive).
@@ -80,8 +87,17 @@ pub fn resolve_films_root_with_tv(out_dir: &str, films_dir: &str, tv_dir: &str) 
     if is_named_films_custom(p, folder_name) {
         p.to_path_buf()
     } else if is_named_tv_custom(p, tv_dir) {
-        match p.parent() {
-            Some(parent) if !parent.as_os_str().is_empty() => parent.join(folder_name),
+        let parent = p.parent().filter(|par| !par.as_os_str().is_empty()).map(PathBuf::from).or_else(|| {
+            if let Some(idx) = trimmed.rfind(['/', '\\']) {
+                let parent_str = &trimmed[..idx];
+                if !parent_str.is_empty() {
+                    return Some(PathBuf::from(parent_str));
+                }
+            }
+            None
+        });
+        match parent {
+            Some(parent) => parent.join(folder_name),
             _ => PathBuf::from(folder_name),
         }
     } else {
@@ -116,8 +132,17 @@ pub fn resolve_tv_root_with_films(out_dir: &str, tv_dir: &str, films_dir: &str) 
     if is_named_tv_custom(p, folder_name) {
         p.to_path_buf()
     } else if is_named_films_custom(p, films_dir) {
-        match p.parent() {
-            Some(parent) if !parent.as_os_str().is_empty() => parent.join(folder_name),
+        let parent = p.parent().filter(|par| !par.as_os_str().is_empty()).map(PathBuf::from).or_else(|| {
+            if let Some(idx) = trimmed.rfind(['/', '\\']) {
+                let parent_str = &trimmed[..idx];
+                if !parent_str.is_empty() {
+                    return Some(PathBuf::from(parent_str));
+                }
+            }
+            None
+        });
+        match parent {
+            Some(parent) => parent.join(folder_name),
             _ => PathBuf::from(folder_name),
         }
     } else {
@@ -205,8 +230,12 @@ mod tests {
 
     #[test]
     fn test_domain_naming_custom_folders() {
+        let base = Path::new("Media");
+        let movies = base.join("Movies");
+        let series = base.join("Series");
+
         let spec = OutputNamingSpec {
-            out_dir: "C:\\Media".to_string(),
+            out_dir: base.to_string_lossy().to_string(),
             films_dir: "Movies".to_string(),
             tv_dir: "Series".to_string(),
             explicit_output: None,
@@ -219,20 +248,20 @@ mod tests {
         assert!(p.to_string_lossy().ends_with("Inception (2010).mkv"));
 
         assert_eq!(
-            resolve_films_root_custom("C:\\Media", "Movies"),
-            PathBuf::from("C:\\Media\\Movies")
+            resolve_films_root_custom(&base.to_string_lossy(), "Movies"),
+            movies
         );
         assert_eq!(
-            resolve_tv_root_custom("C:\\Media", "Series"),
-            PathBuf::from("C:\\Media\\Series")
+            resolve_tv_root_custom(&base.to_string_lossy(), "Series"),
+            series
         );
         assert_eq!(
-            resolve_films_root_with_tv("C:\\Media\\Series", "Movies", "Series"),
-            PathBuf::from("C:\\Media\\Movies")
+            resolve_films_root_with_tv(&series.to_string_lossy(), "Movies", "Series"),
+            movies
         );
         assert_eq!(
-            resolve_tv_root_with_films("C:\\Media\\Movies", "Series", "Movies"),
-            PathBuf::from("C:\\Media\\Series")
+            resolve_tv_root_with_films(&movies.to_string_lossy(), "Series", "Movies"),
+            series
         );
     }
 }

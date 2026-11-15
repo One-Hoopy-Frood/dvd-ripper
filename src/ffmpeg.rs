@@ -3451,13 +3451,14 @@ mod tests {
         assert!(bd_args.contains(&"800".to_string()));
         assert!(bd_args.contains(&"bluray:D:\\".to_string()));
 
+        let track_flac = Path::new("Music").join("01 - Speak to Me.flac");
         let cd_cmd = build_audio_cd_track_command(
             "ffmpeg",
             Path::new("D:\\Track01.cda"),
             1,
             "Dark Side of the Moon",
             "Speak to Me",
-            Path::new("C:\\Music\\01 - Speak to Me.flac"),
+            &track_flac,
         );
         let cd_args: Vec<String> = cd_cmd
             .get_args()
@@ -3469,7 +3470,7 @@ mod tests {
         let m3u8 = generate_m3u8_playlist(&[(
             "Speak to Me".to_string(),
             90.4,
-            PathBuf::from("C:\\Music\\01 - Speak to Me.flac"),
+            track_flac,
         )]);
         assert!(m3u8.starts_with("#EXTM3U\n"));
         assert!(m3u8.contains("#EXTINF:90,Speak to Me\n01 - Speak to Me.flac"));

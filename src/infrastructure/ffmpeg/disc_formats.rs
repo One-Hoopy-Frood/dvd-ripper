@@ -172,6 +172,7 @@ pub fn generate_m3u8_playlist(tracks: &[(String, f64, PathBuf)]) -> String {
         let file_name = path
             .file_name()
             .and_then(|n| n.to_str())
+            .map(|s| s.rsplit(['/', '\\']).next().unwrap_or(s))
             .unwrap_or("track.flac");
         out.push_str(&format!("#EXTINF:{},{}\n{}\n", secs, title, file_name));
     }
