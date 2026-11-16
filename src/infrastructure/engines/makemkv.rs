@@ -122,16 +122,47 @@ impl MakeMkvTranscoder {
 
     /// Parses MakeMKV robot progress line:
     /// `PRGV:current,total,max` e.g. `PRGV:32768,65536,65536` -> 50.0%
+    /// MakeMKV reports current sub-task progress and overall batch total against a constant
+    /// maximum scale (typically 65536). Dividing by `max` produces smooth linear progress,
+    /// preventing erratic jumps across operation phases.
     pub fn parse_progress_line(line: &str) -> Option<f64> {
         if !line.starts_with("PRGV:") {
             return None;
         }
         let parts: Vec<&str> = line[5..].split(',').collect();
-        if parts.len() >= 2 {
+        if parts.len() >= 3 {
             let current = parts[0].trim().parse::<f64>().ok()?;
             let total = parts[1].trim().parse::<f64>().ok()?;
-            if total > 0.0 {
-                return Some(((current / total) * 100.0).clamp(0.0, 99.9));
+            let max = parts[2].trim().parse::<f64>().ok()?;
+            if max > 0.0 {
+                // When ripping a single title, `current` tracks progress of the active title
+                // while `total` tracks overall batch progress against `max`.
+                let val = if current > 0.0 { current } else { total };
+                return Some(((val / max) * 100.0).clamp(0.0, 99.9));
+            }
+        } else if parts.len() == 2 {
+            let current = parts[0].trim().parse::<f64>().ok()?;
+            let max = parts[1].trim().parse::<f64>().ok()?;
+            if max > 0.0 {
+                return Some(((current / max) * 100.0).clamp(0.0, 99.9));
+            }
+        }
+        None
+    }
+
+    /// Parses MakeMKV robot operation title lines:
+    /// `PRGC:code,id,"name"` or `PRGT:code,id,"name"` e.g. `PRGC:5014,0,"Saving 1 titles"`
+    pub fn parse_operation_title(line: &str) -> Option<String> {
+        if line.starts_with("PRGC:") || line.starts_with("PRGT:") {
+            if let Some(start) = line.find('"') {
+                if let Some(end) = line.rfind('"') {
+                    if end > start {
+                        let text = &line[start + 1..end];
+                        if !text.is_empty() {
+                            return Some(text.to_string());
+                        }
+                    }
+                }
             }
         }
         None
@@ -232,6 +263,10 @@ impl Transcoder for MakeMkvTranscoder {
             .ok_or_else(|| anyhow!("Failed to capture makemkvcon stdout"))?;
         let reader = BufReader::new(stdout);
 
+        let mut current_phase = "Ripping".to_string();
+        let mut is_saving = false;
+        let mut max_saving_pct: f64 = 0.0;
+
         for line_res in reader.lines() {
             if let Some(ref flag) = cancel_flag
                 && flag.load(Ordering::SeqCst)
@@ -242,9 +277,22 @@ impl Transcoder for MakeMkvTranscoder {
             }
 
             if let Ok(line) = line_res {
+                if let Some(phase) = Self::parse_operation_title(&line) {
+                    if phase.to_lowercase().contains("saving") {
+                        is_saving = true;
+                    }
+                    current_phase = phase;
+                }
+
                 if let Some(pct) = Self::parse_progress_line(&line) {
+                    let reported_pct = if is_saving {
+                        max_saving_pct = max_saving_pct.max(pct);
+                        max_saving_pct
+                    } else {
+                        pct
+                    };
                     if let Some(obs) = observer {
-                        obs.on_progress(pct, "N/A", "Ripping");
+                        obs.on_progress(reported_pct, "N/A", &current_phase);
                     }
                 } else if line.starts_with("MSG:")
                     && let Some(obs) = observer
@@ -269,6 +317,12 @@ impl Transcoder for MakeMkvTranscoder {
 
         // MakeMKV outputs title00.mkv, title_t00.mkv, or <DISCLABEL>_t00.mkv into out_dir.
         // Identify newly created .mkv and rename to match job.output_path if specified.
+        let dest = if job.output_path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("mkv")).unwrap_or(false) {
+            job.output_path.to_path_buf()
+        } else {
+            job.output_path.with_extension("mkv")
+        };
+
         if let Ok(entries) = std::fs::read_dir(out_dir) {
             let mut candidates: Vec<std::path::PathBuf> = entries
                 .flatten()
@@ -279,26 +333,68 @@ impl Transcoder for MakeMkvTranscoder {
                             .and_then(|e| e.to_str())
                             .map(|e| e.eq_ignore_ascii_case("mkv"))
                             .unwrap_or(false)
+                        && p != &dest
                         && p != job.output_path
                         && !existing_mkvs.contains(p)
                 })
                 .collect();
 
-            if let Some(target) = candidates.pop() {
-                let _ = std::fs::rename(&target, job.output_path);
-            } else if let Ok(fallback_entries) = std::fs::read_dir(out_dir) {
+            // Sort candidates by modification time descending to pick the freshest file
+            candidates.sort_by_key(|p| p.metadata().and_then(|m| m.modified()).ok());
+
+            let chosen = candidates.pop().or_else(|| {
                 // Secondary fallback scan by typical MakeMKV title prefixes
-                for entry in fallback_entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file()
-                        && path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("mkv")).unwrap_or(false)
-                        && path != job.output_path
-                        && let Some(file_name) = path.file_name().and_then(|n| n.to_str())
-                        && (file_name.starts_with("title") || file_name.starts_with("t0") || file_name.contains("_t"))
-                    {
-                        let _ = std::fs::rename(&path, job.output_path);
-                        break;
+                if let Ok(fallback_entries) = std::fs::read_dir(out_dir) {
+                    for entry in fallback_entries.flatten() {
+                        let path = entry.path();
+                        if path.is_file()
+                            && path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("mkv")).unwrap_or(false)
+                            && path != dest
+                            && path != job.output_path
+                            && let Some(file_name) = path.file_name().and_then(|n| n.to_str())
+                            && (file_name.starts_with("title") || file_name.starts_with("t0") || file_name.contains("_t"))
+                        {
+                            return Some(path);
+                        }
                     }
+                }
+                None
+            });
+
+            if let Some(target) = chosen {
+                // Remove pre-existing dest if present to avoid Windows ERROR_ALREADY_EXISTS
+                if dest.exists() {
+                    let _ = std::fs::remove_file(&dest);
+                }
+                // Clean up any stale partial mp4 / temporary file from previous failed attempts
+                if job.output_path.exists() && job.output_path != dest {
+                    let _ = std::fs::remove_file(job.output_path);
+                }
+                let tmp_vob = job.output_path.with_extension("native_cells.tmp.vob");
+                if tmp_vob.exists() {
+                    let _ = std::fs::remove_file(&tmp_vob);
+                }
+
+                if let Err(e) = std::fs::rename(&target, &dest) {
+                    // Fallback to copy + remove for cross-filesystem moves
+                    if let Err(copy_err) = std::fs::copy(&target, &dest).and_then(|_| std::fs::remove_file(&target)) {
+                        if let Some(obs) = observer {
+                            obs.on_log(&format!(
+                                "[MakeMKV] Warning: could not move '{}' to '{}': {} / {}",
+                                target.display(), dest.display(), e, copy_err
+                            ));
+                        }
+                    } else if let Some(obs) = observer {
+                        obs.on_log(&format!(
+                            "[MakeMKV] Output saved as '{}'",
+                            dest.display()
+                        ));
+                    }
+                } else if let Some(obs) = observer {
+                    obs.on_log(&format!(
+                        "[MakeMKV] Output saved as '{}'",
+                        dest.display()
+                    ));
                 }
             }
         }
@@ -322,11 +418,43 @@ mod tests {
         assert!(pct.is_some());
         assert!((pct.unwrap() - 50.0).abs() < 0.1);
 
+        // MakeMKV sub-step vs overall progress: dividing by max (65536) yields correct pct
+        let sub_step = "PRGV:3744,313,65536";
+        let pct_sub = MakeMkvTranscoder::parse_progress_line(sub_step);
+        assert!(pct_sub.is_some());
+        assert!((pct_sub.unwrap() - (3744.0 / 65536.0 * 100.0)).abs() < 0.01);
+
+        let finished = "PRGV:65536,65536,65536";
+        let pct_fin = MakeMkvTranscoder::parse_progress_line(finished);
+        assert!(pct_fin.is_some());
+        assert!((pct_fin.unwrap() - 99.9).abs() < 0.1);
+
         // Invalid cases
         assert!(MakeMkvTranscoder::parse_progress_line("MSG:5004,0,0").is_none());
         assert!(MakeMkvTranscoder::parse_progress_line("PRGV:").is_none());
         assert!(MakeMkvTranscoder::parse_progress_line("PRGV:abc,def").is_none());
         assert!(MakeMkvTranscoder::parse_progress_line("PRGV:10,0").is_none());
+        assert!(MakeMkvTranscoder::parse_progress_line("PRGV:10,0,0").is_none());
+    }
+
+    #[test]
+    fn test_parse_makemkv_operation_title() {
+        assert_eq!(
+            MakeMkvTranscoder::parse_operation_title("PRGC:5018,0,\"Scanning CD-ROM devices\""),
+            Some("Scanning CD-ROM devices".to_string())
+        );
+        assert_eq!(
+            MakeMkvTranscoder::parse_operation_title("PRGT:3404,0,\"Opening Blu-ray disc\""),
+            Some("Opening Blu-ray disc".to_string())
+        );
+        assert_eq!(
+            MakeMkvTranscoder::parse_operation_title("PRGC:5014,0,\"Saving 1 titles\""),
+            Some("Saving 1 titles".to_string())
+        );
+        assert_eq!(
+            MakeMkvTranscoder::parse_operation_title("MSG:1005,0,1,\"MakeMKV v2.0.0 started\""),
+            None
+        );
     }
 
     #[test]

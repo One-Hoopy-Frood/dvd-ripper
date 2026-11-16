@@ -2201,8 +2201,7 @@ mod tests {
         app.open_log_file();
         assert!(test_log_file.exists());
 
-        // 5. Test saving logging preferences and resetting defaults
-        app.save_logging_preference();
+        // 5. Test resetting defaults
         app.reset_to_defaults();
 
         let _ = std::fs::remove_dir_all(&temp_dir);

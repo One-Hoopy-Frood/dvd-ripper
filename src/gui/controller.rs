@@ -415,6 +415,9 @@ impl GuiApplicationController {
                 ..Default::default()
             };
             base_args.apply_encoding_options(spec.encoding_options.clone());
+            if spec.engine.eq_ignore_ascii_case("makemkv") {
+                base_args.mkv = true;
+            }
 
             let trans_options: crate::domain::ports::TranscodeOptions = (&base_args).into();
             let ffmpeg_transcoder = Arc::new(
@@ -561,7 +564,7 @@ impl GuiApplicationController {
                         spec.detected_episodes.len(),
                         show_name
                     )));
-                    let ext = if spec.encoding_options.mkv {
+                    let ext = if spec.encoding_options.mkv || spec.engine.eq_ignore_ascii_case("makemkv") {
                         "mkv"
                     } else {
                         "mp4"
