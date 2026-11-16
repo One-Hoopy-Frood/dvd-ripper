@@ -22,15 +22,87 @@ pub struct MakeMkvTranscoder {
 }
 
 impl MakeMkvTranscoder {
-    /// Creates a new `MakeMkvTranscoder`.
+    /// Creates a new `MakeMkvTranscoder`, automatically resolving default paths if necessary.
     pub fn new(makemkv_path: impl Into<String>) -> Self {
+        let raw = makemkv_path.into();
+        let resolved = Self::resolve_path(&raw);
         Self {
-            makemkv_path: makemkv_path.into(),
+            makemkv_path: resolved,
         }
     }
 
-    /// Checks whether `makemkvcon` is available in PATH or at the specified executable path.
-    pub fn is_available(path: &str) -> bool {
+    /// Resolves the MakeMKV CLI executable path.
+    ///
+    /// If the configured path is explicitly set to an existing file, it is returned.
+    /// If the default executable name ("makemkvcon" / "makemkv" or empty) is used,
+    /// it checks whether it is available in system PATH; if not, it automatically searches
+    /// well-known standard installation paths (e.g. `C:\Program Files (x86)\MakeMKV\makemkvcon64.exe`).
+    pub fn resolve_path(configured_path: &str) -> String {
+        let trimmed = configured_path.trim();
+        if trimmed.is_empty()
+            || trimmed.eq_ignore_ascii_case("makemkvcon")
+            || trimmed.eq_ignore_ascii_case("makemkv")
+        {
+            if Self::check_binary(trimmed) {
+                return trimmed.to_string();
+            }
+            if let Some(found) = Self::find_installed_makemkv() {
+                return found;
+            }
+            return trimmed.to_string();
+        }
+
+        let p = Path::new(trimmed);
+        if p.is_file() || Self::check_binary(trimmed) {
+            return trimmed.to_string();
+        }
+
+        trimmed.to_string()
+    }
+
+    /// Searches well-known operating system default installation directories for MakeMKV.
+    pub fn find_installed_makemkv() -> Option<String> {
+        let mut candidates = Vec::new();
+
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(pf86) = std::env::var("ProgramFiles(x86)") {
+                candidates.push(format!(r"{}\MakeMKV\makemkvcon64.exe", pf86));
+                candidates.push(format!(r"{}\MakeMKV\makemkvcon.exe", pf86));
+            }
+            if let Ok(pf) = std::env::var("ProgramFiles") {
+                candidates.push(format!(r"{}\MakeMKV\makemkvcon64.exe", pf));
+                candidates.push(format!(r"{}\MakeMKV\makemkvcon.exe", pf));
+            }
+            candidates.push(r"C:\Program Files (x86)\MakeMKV\makemkvcon64.exe".to_string());
+            candidates.push(r"C:\Program Files (x86)\MakeMKV\makemkvcon.exe".to_string());
+            candidates.push(r"C:\Program Files\MakeMKV\makemkvcon64.exe".to_string());
+            candidates.push(r"C:\Program Files\MakeMKV\makemkvcon.exe".to_string());
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            candidates.push("/Applications/MakeMKV.app/Contents/MacOS/makemkvcon".to_string());
+            candidates.push("/usr/local/bin/makemkvcon".to_string());
+            candidates.push("/opt/homebrew/bin/makemkvcon".to_string());
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            candidates.push("/usr/bin/makemkvcon".to_string());
+            candidates.push("/usr/local/bin/makemkvcon".to_string());
+        }
+
+        for candidate in candidates {
+            if Path::new(&candidate).is_file() {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
+    /// Internal probe verifying whether a binary path can be executed and responds.
+    fn check_binary(path: &str) -> bool {
         let mut cmd = Command::new(path);
         crate::utils::configure_silent_command(&mut cmd);
         cmd.arg("-r")
@@ -40,6 +112,12 @@ impl MakeMkvTranscoder {
             .status()
             .map(|s| s.success() || s.code() == Some(1))
             .unwrap_or(false)
+    }
+
+    /// Checks whether `makemkvcon` is available in PATH or at the specified executable path.
+    pub fn is_available(path: &str) -> bool {
+        let resolved = Self::resolve_path(path);
+        Self::check_binary(&resolved)
     }
 
     /// Parses MakeMKV robot progress line:
@@ -72,7 +150,23 @@ impl Transcoder for MakeMkvTranscoder {
             std::fs::create_dir_all(out_dir)?;
         }
 
-        // makemkvcon mkv disc:<id> or file:<path> <title_index> <dest_dir>
+        // Snapshot existing .mkv files in out_dir before running MakeMKV
+        let existing_mkvs: std::collections::HashSet<std::path::PathBuf> = std::fs::read_dir(out_dir)
+            .ok()
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.is_file()
+                    && p.extension()
+                        .and_then(|e| e.to_str())
+                        .map(|e| e.eq_ignore_ascii_case("mkv"))
+                        .unwrap_or(false)
+            })
+            .collect();
+
+        // makemkvcon mkv disc:<id> or dev:<dev> or file:<path> <title_index> <dest_dir>
         let mut cmd = Command::new(&self.makemkv_path);
         crate::utils::configure_silent_command(&mut cmd);
 
@@ -81,13 +175,26 @@ impl Transcoder for MakeMkvTranscoder {
             .arg("mkv");
 
         let src_str = job.source_dvd.to_string_lossy();
-        if src_str.ends_with(".iso") || src_str.ends_with(".ISO") {
-            cmd.arg(format!("iso:{}", src_str));
-        } else if src_str.contains("VIDEO_TS") || src_str.contains("video_ts") {
-            cmd.arg(format!("file:{}", src_str));
+        let trimmed_src = src_str.trim();
+        if trimmed_src.ends_with(".iso") || trimmed_src.ends_with(".ISO") {
+            cmd.arg(format!("iso:{}", trimmed_src));
+        } else if trimmed_src.contains("VIDEO_TS") || trimmed_src.contains("video_ts") {
+            cmd.arg(format!("file:{}", trimmed_src));
         } else {
-            // Assume drive path, e.g. D: or /dev/sr0
-            cmd.arg("disc:0");
+            let clean = trimmed_src.trim_end_matches('\\').trim_end_matches('/');
+            if clean.len() == 2 && clean.ends_with(':') {
+                cmd.arg(format!("dev:{}", clean));
+            } else if clean.starts_with("/dev/") {
+                cmd.arg(format!("dev:{}", clean));
+            } else if clean.starts_with("disc:")
+                || clean.starts_with("dev:")
+                || clean.starts_with("file:")
+                || clean.starts_with("iso:")
+            {
+                cmd.arg(clean);
+            } else {
+                cmd.arg("disc:0");
+            }
         }
 
         // Title index in makemkv is 0-based for specific title or "all"
@@ -160,19 +267,38 @@ impl Transcoder for MakeMkvTranscoder {
             ));
         }
 
-        // MakeMKV outputs title00.mkv (or similar). If job.output_path was specified,
-        // find newly created .mkv in out_dir and rename to match job.output_path if needed.
+        // MakeMKV outputs title00.mkv, title_t00.mkv, or <DISCLABEL>_t00.mkv into out_dir.
+        // Identify newly created .mkv and rename to match job.output_path if specified.
         if let Ok(entries) = std::fs::read_dir(out_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_file()
-                    && path.extension().and_then(|e| e.to_str()) == Some("mkv")
-                    && path != job.output_path
-                    && let Some(file_name) = path.file_name().and_then(|n| n.to_str())
-                    && (file_name.starts_with("title") || file_name.starts_with("t0"))
-                {
-                    let _ = std::fs::rename(&path, job.output_path);
-                    break;
+            let mut candidates: Vec<std::path::PathBuf> = entries
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.is_file()
+                        && p.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.eq_ignore_ascii_case("mkv"))
+                            .unwrap_or(false)
+                        && p != job.output_path
+                        && !existing_mkvs.contains(p)
+                })
+                .collect();
+
+            if let Some(target) = candidates.pop() {
+                let _ = std::fs::rename(&target, job.output_path);
+            } else if let Ok(fallback_entries) = std::fs::read_dir(out_dir) {
+                // Secondary fallback scan by typical MakeMKV title prefixes
+                for entry in fallback_entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file()
+                        && path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("mkv")).unwrap_or(false)
+                        && path != job.output_path
+                        && let Some(file_name) = path.file_name().and_then(|n| n.to_str())
+                        && (file_name.starts_with("title") || file_name.starts_with("t0") || file_name.contains("_t"))
+                    {
+                        let _ = std::fs::rename(&path, job.output_path);
+                        break;
+                    }
                 }
             }
         }

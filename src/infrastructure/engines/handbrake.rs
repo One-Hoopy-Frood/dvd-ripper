@@ -4,6 +4,7 @@
 //! menu navigation, decomb filtering, hardware acceleration, and real-time progress parsing.
 
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -22,16 +23,84 @@ pub struct HandBrakeTranscoder {
 }
 
 impl HandBrakeTranscoder {
-    /// Creates a new `HandBrakeTranscoder`.
+    /// Creates a new `HandBrakeTranscoder`, automatically resolving default paths if necessary.
     pub fn new(handbrake_path: impl Into<String>, options: TranscodeOptions) -> Self {
+        let raw = handbrake_path.into();
+        let resolved = Self::resolve_path(&raw);
         Self {
-            handbrake_path: handbrake_path.into(),
+            handbrake_path: resolved,
             options,
         }
     }
 
-    /// Checks whether `HandBrakeCLI` is available in PATH or at the specified executable path.
-    pub fn is_available(path: &str) -> bool {
+    /// Resolves the HandBrakeCLI executable path.
+    ///
+    /// If the configured path is explicitly set to an existing file, it is returned.
+    /// If the default executable name ("HandBrakeCLI" / "handbrake" or empty) is used,
+    /// it checks whether it is available in system PATH; if not, it automatically searches
+    /// well-known standard installation paths (e.g. `C:\Program Files\HandBrake\HandBrakeCLI.exe`).
+    pub fn resolve_path(configured_path: &str) -> String {
+        let trimmed = configured_path.trim();
+        if trimmed.is_empty()
+            || trimmed.eq_ignore_ascii_case("handbrakecli")
+            || trimmed.eq_ignore_ascii_case("handbrake")
+        {
+            if Self::check_binary(trimmed) {
+                return trimmed.to_string();
+            }
+            if let Some(found) = Self::find_installed_handbrake() {
+                return found;
+            }
+            return trimmed.to_string();
+        }
+
+        let p = Path::new(trimmed);
+        if p.is_file() || Self::check_binary(trimmed) {
+            return trimmed.to_string();
+        }
+
+        trimmed.to_string()
+    }
+
+    /// Searches well-known operating system default installation directories for HandBrakeCLI.
+    pub fn find_installed_handbrake() -> Option<String> {
+        let mut candidates = Vec::new();
+
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(pf) = std::env::var("ProgramFiles") {
+                candidates.push(format!(r"{}\HandBrake\HandBrakeCLI.exe", pf));
+            }
+            if let Ok(pf86) = std::env::var("ProgramFiles(x86)") {
+                candidates.push(format!(r"{}\HandBrake\HandBrakeCLI.exe", pf86));
+            }
+            candidates.push(r"C:\Program Files\HandBrake\HandBrakeCLI.exe".to_string());
+            candidates.push(r"C:\Program Files (x86)\HandBrake\HandBrakeCLI.exe".to_string());
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            candidates.push("/usr/local/bin/HandBrakeCLI".to_string());
+            candidates.push("/opt/homebrew/bin/HandBrakeCLI".to_string());
+            candidates.push("/Applications/HandBrakeCLI".to_string());
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            candidates.push("/usr/bin/HandBrakeCLI".to_string());
+            candidates.push("/usr/local/bin/HandBrakeCLI".to_string());
+        }
+
+        for candidate in candidates {
+            if Path::new(&candidate).is_file() {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
+    /// Internal probe verifying whether a HandBrakeCLI binary path responds to `--version`.
+    fn check_binary(path: &str) -> bool {
         let mut cmd = Command::new(path);
         crate::utils::configure_silent_command(&mut cmd);
         cmd.arg("--version")
@@ -40,6 +109,12 @@ impl HandBrakeTranscoder {
             .status()
             .map(|s| s.success())
             .unwrap_or(false)
+    }
+
+    /// Checks whether `HandBrakeCLI` is available in PATH or at the specified executable path.
+    pub fn is_available(path: &str) -> bool {
+        let resolved = Self::resolve_path(path);
+        Self::check_binary(&resolved)
     }
 
     /// Builds the `Command` for executing HandBrakeCLI based on job and options.

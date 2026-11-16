@@ -245,8 +245,20 @@ impl Default for DvdRipperApp {
             iso_mode: false,
             preset: "veryfast".to_string(),
             engine: cfg.engine.clone().unwrap_or_else(|| "auto".to_string()),
-            handbrake_path: cfg.handbrake.clone().unwrap_or_else(|| "HandBrakeCLI".to_string()),
-            makemkv_path: cfg.makemkv.clone().unwrap_or_else(|| "makemkvcon".to_string()),
+            handbrake_path: cfg
+                .handbrake
+                .clone()
+                .map(|p| crate::infrastructure::engines::HandBrakeTranscoder::resolve_path(&p))
+                .unwrap_or_else(|| {
+                    crate::infrastructure::engines::HandBrakeTranscoder::resolve_path("HandBrakeCLI")
+                }),
+            makemkv_path: cfg
+                .makemkv
+                .clone()
+                .map(|p| crate::infrastructure::engines::MakeMkvTranscoder::resolve_path(&p))
+                .unwrap_or_else(|| {
+                    crate::infrastructure::engines::MakeMkvTranscoder::resolve_path("makemkvcon")
+                }),
             ffmpeg_path: "ffmpeg".to_string(),
             expected_runtime_secs: None,
 
@@ -524,6 +536,64 @@ impl DvdRipperApp {
             self.log_file = file.to_string_lossy().to_string();
             self.save_logging_preference();
         }
+    }
+
+    pub fn pick_handbrake_binary(&mut self) {
+        let current = Path::new(&self.handbrake_path);
+        let starting = if current.is_file() {
+            current.parent()
+        } else if current.is_dir() {
+            Some(current)
+        } else {
+            None
+        };
+        #[cfg(target_os = "windows")]
+        let (filter_name, extensions) = ("Executable Files (*.exe)", &["exe"][..]);
+        #[cfg(not(target_os = "windows"))]
+        let (filter_name, extensions) = ("Executable Files (*)", &[][..]);
+
+        if let Some(file) = self.controller.pick_file(
+            starting,
+            "Select HandBrakeCLI Executable",
+            Some(filter_name),
+            if extensions.is_empty() { None } else { Some(extensions) },
+        ) {
+            self.handbrake_path = file.to_string_lossy().to_string();
+            self.save_engine_preferences();
+        }
+    }
+
+    pub fn pick_makemkv_binary(&mut self) {
+        let current = Path::new(&self.makemkv_path);
+        let starting = if current.is_file() {
+            current.parent()
+        } else if current.is_dir() {
+            Some(current)
+        } else {
+            None
+        };
+        #[cfg(target_os = "windows")]
+        let (filter_name, extensions) = ("Executable Files (*.exe)", &["exe"][..]);
+        #[cfg(not(target_os = "windows"))]
+        let (filter_name, extensions) = ("Executable Files (*)", &[][..]);
+
+        if let Some(file) = self.controller.pick_file(
+            starting,
+            "Select MakeMKV CLI Binary (makemkvcon / makemkvcon64)",
+            Some(filter_name),
+            if extensions.is_empty() { None } else { Some(extensions) },
+        ) {
+            self.makemkv_path = file.to_string_lossy().to_string();
+            self.save_engine_preferences();
+        }
+    }
+
+    pub fn save_engine_preferences(&self) {
+        let mut cfg = crate::config::load_config(None);
+        cfg.engine = Some(self.engine.clone());
+        cfg.handbrake = Some(self.handbrake_path.clone());
+        cfg.makemkv = Some(self.makemkv_path.clone());
+        let _ = crate::config::save_default_config(&cfg);
     }
 
     pub fn open_log_file(&self) {

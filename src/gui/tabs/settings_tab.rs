@@ -27,6 +27,8 @@ pub fn render_settings_tab(
     file_log_enabled: &mut bool,
     log_file: &mut String,
     on_browse_out_dir: impl FnOnce(),
+    on_browse_handbrake: impl FnOnce(),
+    on_browse_makemkv: impl FnOnce(),
     on_browse_log_file: impl FnOnce(),
     on_open_log_file: impl FnOnce(),
     on_reset_defaults: impl FnOnce(),
@@ -62,6 +64,9 @@ pub fn render_settings_tab(
                     ui.horizontal(|ui| {
                         ui.label("HandBrakeCLI Path:");
                         ui.add(egui::TextEdit::singleline(handbrake_path).desired_width(260.0));
+                        if ui.button("📂 Browse...").clicked() {
+                            on_browse_handbrake();
+                        }
                     });
                 }
 
@@ -69,6 +74,9 @@ pub fn render_settings_tab(
                     ui.horizontal(|ui| {
                         ui.label("MakeMKV (makemkvcon) Path:");
                         ui.add(egui::TextEdit::singleline(makemkv_path).desired_width(260.0));
+                        if ui.button("📂 Browse...").clicked() {
+                            on_browse_makemkv();
+                        }
                     });
                 }
             });
@@ -266,6 +274,8 @@ mod tests {
                     &mut nfo,
                     &mut file_log_enabled,
                     &mut log_file,
+                    || {},
+                    || {},
                     || {},
                     || {},
                     || {},

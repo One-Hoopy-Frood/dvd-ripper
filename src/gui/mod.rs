@@ -453,10 +453,15 @@ impl DvdRipperApp {
                 }
                 ActiveTab::Settings => {
                     let mut browse_req = false;
+                    let mut browse_handbrake_req = false;
+                    let mut browse_makemkv_req = false;
                     let mut browse_log_req = false;
                     let mut open_log_req = false;
                     let mut reset_req = false;
 
+                    let prev_engine = self.engine.clone();
+                    let prev_handbrake = self.handbrake_path.clone();
+                    let prev_makemkv = self.makemkv_path.clone();
                     let prev_log_enabled = self.file_log_enabled;
                     let prev_log_file = self.log_file.clone();
 
@@ -483,11 +488,20 @@ impl DvdRipperApp {
                             &mut self.file_log_enabled,
                             &mut self.log_file,
                             || browse_req = true,
+                            || browse_handbrake_req = true,
+                            || browse_makemkv_req = true,
                             || browse_log_req = true,
                             || open_log_req = true,
                             || reset_req = true,
                         );
                     });
+
+                    if self.engine != prev_engine
+                        || self.handbrake_path != prev_handbrake
+                        || self.makemkv_path != prev_makemkv
+                    {
+                        self.save_engine_preferences();
+                    }
 
                     if self.file_log_enabled != prev_log_enabled || self.log_file != prev_log_file {
                         self.save_logging_preference();
@@ -495,6 +509,12 @@ impl DvdRipperApp {
 
                     if browse_req {
                         self.pick_output_dir();
+                    }
+                    if browse_handbrake_req {
+                        self.pick_handbrake_binary();
+                    }
+                    if browse_makemkv_req {
+                        self.pick_makemkv_binary();
                     }
                     if browse_log_req {
                         self.pick_log_file();
@@ -505,6 +525,7 @@ impl DvdRipperApp {
                     if reset_req {
                         self.reset_to_defaults();
                         self.save_current_output_dir_preference();
+                        self.save_engine_preferences();
                         self.save_logging_preference();
                     }
                 }
