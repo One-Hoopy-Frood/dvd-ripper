@@ -195,7 +195,7 @@ pub fn render_settings_tab(
                     if ui.button("📂 Browse...").on_hover_text("Browse or choose destination log file").clicked() {
                         on_browse_log_file();
                     }
-                    if ui.button("📄 Open File").on_hover_text("Opens the log file with your system default text editor").clicked() {
+                    if ui.button("📄 Open Log File").on_hover_text("Opens the log file with your system default text editor").clicked() {
                         on_open_log_file();
                     }
                 });

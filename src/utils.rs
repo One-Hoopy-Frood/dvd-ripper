@@ -290,25 +290,73 @@ pub fn open_folder_in_explorer(path: &Path) {
 
 /// Opens a file in the operating system's default registered application.
 pub fn open_file_in_default_app(path: &Path) {
-    if !path.exists() {
-        if let Some(parent) = path.parent()
+    let target_path = if path.is_relative() {
+        std::env::current_dir()
+            .map(|cwd| cwd.join(path))
+            .unwrap_or_else(|_| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    };
+
+    if !target_path.exists() {
+        if let Some(parent) = target_path.parent()
             && !parent.as_os_str().is_empty()
         {
             let _ = std::fs::create_dir_all(parent);
         }
-        let _ = std::fs::File::create(path);
+        let _ = std::fs::File::create(&target_path);
     }
+
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("explorer").arg(path).spawn();
+        use std::os::windows::ffi::OsStrExt;
+        let wide_path: Vec<u16> = target_path
+            .as_os_str()
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let wide_op: Vec<u16> = std::ffi::OsStr::new("open")
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+
+        #[link(name = "shell32")]
+        unsafe extern "system" {
+            fn ShellExecuteW(
+                hwnd: *mut std::ffi::c_void,
+                operation: *const u16,
+                file: *const u16,
+                parameters: *const u16,
+                directory: *const u16,
+                show_cmd: i32,
+            ) -> isize;
+        }
+
+        let ret = unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                wide_op.as_ptr(),
+                wide_path.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                1, // SW_SHOWNORMAL
+            )
+        };
+
+        if ret <= 32 {
+            // Fallback: try notepad directly if shell execute failed or no file association exists
+            let _ = std::process::Command::new("notepad")
+                .arg(&target_path)
+                .spawn();
+        }
     }
     #[cfg(target_os = "macos")]
     {
-        let _ = std::process::Command::new("open").arg(path).spawn();
+        let _ = std::process::Command::new("open").arg(&target_path).spawn();
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+        let _ = std::process::Command::new("xdg-open").arg(&target_path).spawn();
     }
 }
 
