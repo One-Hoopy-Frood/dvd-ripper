@@ -75,7 +75,7 @@ pub fn build_native_cell_plan(
     title_num: u32,
     chapter_range: Option<(u32, u32)>,
 ) -> Option<NativeCellPlan> {
-    if title_num == 0 {
+    if title_num == 0 || !dvd_path.exists() {
         return None;
     }
 
@@ -381,6 +381,7 @@ pub fn extract_pgc_cells_to_file(
     let start_instant = Instant::now();
     // 32 sectors = 64 KiB read chunk
     let mut chunk_buf = vec![0u8; 32 * (DVD_SECTOR_BYTES as usize)];
+    let mut consecutive_damaged_chunks = 0usize;
 
     if let Some(obs) = observer {
         obs.on_log(&format!(
@@ -427,10 +428,34 @@ pub fn extract_pgc_cells_to_file(
                 match part_file.read_exact(&mut chunk_buf[..bytes_to_read]) {
                     Ok(()) => {
                         writer.write_all(&chunk_buf[..bytes_to_read])?;
+                        consecutive_damaged_chunks = 0;
                     }
                     Err(_) => {
+                        consecutive_damaged_chunks += 1;
+
+                        if let Some(obs) = observer {
+                            obs.on_log(&format!(
+                                "[Native IFO Extractor] Unreadable sector block around sector #{}; attempting fault-tolerant sector stepping...",
+                                cur_sec
+                            ));
+                        }
+
                         // Bad sector fallback: read sector-by-sector and skip unreadable damaged sectors
+                        let mut consecutive_single_fails = 0usize;
                         for s_offset in 0..sectors_to_read {
+                            if let Some(flag) = cancel_flag
+                                && flag.load(Ordering::SeqCst)
+                            {
+                                drop(writer);
+                                let _ = std::fs::remove_file(output_vob_path);
+                                return Err(anyhow!("Native IFO cell extraction cancelled by user."));
+                            }
+
+                            // If 2 consecutive single sectors fail, avoid freezing the optical bus with 30 more hardware timeouts
+                            if consecutive_single_fails >= 2 {
+                                break;
+                            }
+
                             let single_pos = (rel_sec + s_offset as u64) * DVD_SECTOR_BYTES;
                             if part_file.seek(SeekFrom::Start(single_pos)).is_ok()
                                 && part_file
@@ -438,7 +463,21 @@ pub fn extract_pgc_cells_to_file(
                                     .is_ok()
                             {
                                 writer.write_all(&chunk_buf[..DVD_SECTOR_BYTES as usize])?;
+                                consecutive_single_fails = 0;
+                            } else {
+                                consecutive_single_fails += 1;
                             }
+                        }
+
+                        // Circuit breaker: if consecutive damaged chunks exceed limit, pass control
+                        // to next engine in AutoFallback cascade (e.g. MakeMKV with low-level SCSI retry)
+                        if consecutive_damaged_chunks >= 8 {
+                            drop(writer);
+                            let _ = std::fs::remove_file(output_vob_path);
+                            return Err(anyhow!(
+                                "Native IFO extractor encountered severe physical disc damage ({} consecutive unreadable blocks). Passing to next fallback engine...",
+                                consecutive_damaged_chunks
+                            ));
                         }
                     }
                 }
@@ -447,7 +486,7 @@ pub fn extract_pgc_cells_to_file(
             cur_sec += sectors_to_read as u64;
             copied_sectors += sectors_to_read as u64;
 
-            if copied_sectors.is_multiple_of(512) || copied_sectors >= total_sectors {
+            if copied_sectors.is_multiple_of(128) || copied_sectors >= total_sectors || consecutive_damaged_chunks > 0 {
                 let pct = ((copied_sectors as f64 / total_sectors as f64) * 100.0).clamp(0.0, 99.5);
                 let elapsed = start_instant.elapsed().as_secs_f64().max(0.001);
                 let mb_s = ((copied_sectors * DVD_SECTOR_BYTES) as f64 / 1_048_576.0) / elapsed;
