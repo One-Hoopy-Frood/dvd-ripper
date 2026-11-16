@@ -202,8 +202,7 @@ impl Transcoder for MakeMkvTranscoder {
         crate::utils::configure_silent_command(&mut cmd);
 
         cmd.arg("-r")
-            .arg("--messages=-stdout")
-            .arg("--progress=-stdout")
+            .arg("--progress=-same")
             .arg("mkv");
 
         let src_str = job.source_dvd.to_string_lossy();
@@ -264,13 +263,9 @@ impl Transcoder for MakeMkvTranscoder {
             .ok_or_else(|| anyhow!("Failed to capture makemkvcon stdout"))?;
         let reader = BufReader::new(stdout);
 
-        let mut current_phase = "Initializing MakeMKV...".to_string();
+        let mut current_phase = "Ripping".to_string();
         let mut is_saving = false;
         let mut max_saving_pct: f64 = 0.0;
-
-        if let Some(obs) = observer {
-            obs.on_progress(0.0, "N/A", &current_phase);
-        }
 
         for line_res in reader.lines() {
             if let Some(ref flag) = cancel_flag
@@ -287,35 +282,17 @@ impl Transcoder for MakeMkvTranscoder {
                         is_saving = true;
                     }
                     current_phase = phase;
-                    if !is_saving {
-                        if let Some(obs) = observer {
-                            obs.on_progress(0.0, "N/A", &current_phase);
-                        }
-                    }
-                } else if line.starts_with("MSG:3007") {
-                    current_phase = "Scanning disc structure & decrypting CSS keys...".to_string();
-                    if let Some(obs) = observer {
-                        obs.on_progress(0.0, "N/A", &current_phase);
-                    }
-                } else if line.starts_with("MSG:3028") {
-                    current_phase = "Analyzing DVD titles...".to_string();
-                    if let Some(obs) = observer {
-                        obs.on_progress(0.0, "N/A", &current_phase);
-                    }
-                } else if line.starts_with("MSG:5014") {
-                    current_phase = "Saving title to MKV...".to_string();
-                    is_saving = true;
-                    if let Some(obs) = observer {
-                        obs.on_progress(0.0, "N/A", &current_phase);
-                    }
                 }
 
                 if let Some(pct) = Self::parse_progress_line(&line) {
-                    if is_saving {
+                    let reported_pct = if is_saving {
                         max_saving_pct = max_saving_pct.max(pct);
-                        if let Some(obs) = observer {
-                            obs.on_progress(max_saving_pct, "N/A", &current_phase);
-                        }
+                        max_saving_pct
+                    } else {
+                        pct
+                    };
+                    if let Some(obs) = observer {
+                        obs.on_progress(reported_pct, "N/A", &current_phase);
                     }
                 } else if line.starts_with("MSG:")
                     && let Some(obs) = observer
