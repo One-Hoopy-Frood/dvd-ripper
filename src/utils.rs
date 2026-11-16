@@ -288,6 +288,35 @@ pub fn open_folder_in_explorer(path: &Path) {
     }
 }
 
+/// Opens a file in the operating system's default registered application.
+pub fn open_file_in_default_app(path: &Path) {
+    if !path.exists() {
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::File::create(path);
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("explorer").arg(path).spawn();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(path).spawn();
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+    }
+}
+
+/// Returns the default persistent log file path inside the centralized application data directory.
+pub fn get_default_log_file_path() -> PathBuf {
+    get_app_file_path("dvd-ripper.log")
+}
+
 /// Returns a shared, pre-configured HTTP blocking client instance with standard timeout and user agent.
 pub fn get_http_client() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
@@ -1023,6 +1052,23 @@ pub fn append_audit_log_entry(
     Ok(())
 }
 
+/// Appends a timestamped log line to the specified plain text log file.
+pub fn append_to_log_file(log_path: &Path, line: &str) -> Result<()> {
+    use std::io::Write;
+    let formatted = format!("[{}] {}\n", now_timestamp_str(), line);
+    if let Some(parent) = log_path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)?;
+    file.write_all(formatted.as_bytes())?;
+    Ok(())
+}
+
 /// Computes a fast hex verification checksum for a converted media file and writes a .sha256 sidecar file.
 pub fn generate_checksum_file(video_path: &Path) -> Result<PathBuf> {
     use std::io::Read;
@@ -1672,5 +1718,36 @@ mod tests {
         assert!(validate_safe_http_url("ftp://example.com/resource").is_err());
         assert!(validate_safe_http_url("http:///missing-host").is_err());
         assert!(validate_safe_http_url("https://example.com/hook\r\nX-Injected: 1").is_err());
+    }
+
+    #[test]
+    fn test_file_logging_helpers() {
+        let temp_dir = std::env::temp_dir().join(format!("test_dvd_log_{}", std::process::id()));
+        let log_file = temp_dir.join("sub").join("test_app.log");
+
+        // Verify default path resolution
+        let default_path = get_default_log_file_path();
+        assert!(default_path.to_string_lossy().contains("dvd-ripper.log"));
+
+        // Append first line
+        append_to_log_file(&log_file, "First line of log").unwrap();
+        assert!(log_file.exists());
+        let content1 = std::fs::read_to_string(&log_file).unwrap();
+        assert!(content1.contains("First line of log"));
+
+        // Append second line
+        append_to_log_file(&log_file, "Second line of log").unwrap();
+        let content2 = std::fs::read_to_string(&log_file).unwrap();
+        assert!(content2.contains("First line of log"));
+        assert!(content2.contains("Second line of log"));
+
+        // Open file helper creates if not existing
+        let test_open_file = temp_dir.join("auto_create.txt");
+        assert!(!test_open_file.exists());
+        open_file_in_default_app(&test_open_file);
+        assert!(test_open_file.exists());
+
+        // Cleanup
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

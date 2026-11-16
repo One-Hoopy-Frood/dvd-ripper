@@ -84,6 +84,10 @@ pub struct AppConfig {
     pub window_maximized: Option<bool>,
     #[serde(default)]
     pub subwindow_rects: Option<std::collections::BTreeMap<String, [f32; 4]>>,
+    #[serde(default)]
+    pub log_file: Option<String>,
+    #[serde(default)]
+    pub file_log_enabled: Option<bool>,
 }
 
 fn try_load_config_file(path: &Path) -> Option<AppConfig> {
@@ -259,6 +263,8 @@ mod tests {
             profile = "plex"
             mqtt_broker = "192.168.1.50:1883"
             api_key = "secret_key"
+            log_file = "C:/Logs/dvd.log"
+            file_log_enabled = true
         "#;
 
         let cfg = parse_config_toml(toml_str).unwrap();
@@ -267,6 +273,8 @@ mod tests {
         assert_eq!(cfg.profile, Some("plex".to_string()));
         assert_eq!(cfg.mqtt_broker, Some("192.168.1.50:1883".to_string()));
         assert_eq!(cfg.api_key, Some("secret_key".to_string()));
+        assert_eq!(cfg.log_file, Some("C:/Logs/dvd.log".to_string()));
+        assert_eq!(cfg.file_log_enabled, Some(true));
     }
 
     #[test]

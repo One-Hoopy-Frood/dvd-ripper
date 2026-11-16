@@ -453,7 +453,12 @@ impl DvdRipperApp {
                 }
                 ActiveTab::Settings => {
                     let mut browse_req = false;
+                    let mut browse_log_req = false;
+                    let mut open_log_req = false;
                     let mut reset_req = false;
+
+                    let prev_log_enabled = self.file_log_enabled;
+                    let prev_log_file = self.log_file.clone();
 
                     ui.add_enabled_ui(!is_busy, |ui| {
                         tabs::settings_tab::render_settings_tab(
@@ -475,17 +480,32 @@ impl DvdRipperApp {
                             &mut self.no_eject,
                             &mut self.checksum,
                             &mut self.nfo,
+                            &mut self.file_log_enabled,
+                            &mut self.log_file,
                             || browse_req = true,
+                            || browse_log_req = true,
+                            || open_log_req = true,
                             || reset_req = true,
                         );
                     });
 
+                    if self.file_log_enabled != prev_log_enabled || self.log_file != prev_log_file {
+                        self.save_logging_preference();
+                    }
+
                     if browse_req {
                         self.pick_output_dir();
+                    }
+                    if browse_log_req {
+                        self.pick_log_file();
+                    }
+                    if open_log_req {
+                        self.open_log_file();
                     }
                     if reset_req {
                         self.reset_to_defaults();
                         self.save_current_output_dir_preference();
+                        self.save_logging_preference();
                     }
                 }
             }

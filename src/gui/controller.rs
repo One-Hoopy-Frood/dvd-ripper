@@ -101,9 +101,27 @@ impl GuiApplicationController {
             .pick_folder(starting_dir, title)
     }
 
+    /// Opens an OS file picker dialog.
+    pub fn pick_file(
+        &self,
+        starting_dir: Option<&Path>,
+        title: &str,
+        filter_name: Option<&str>,
+        extensions: Option<&[&str]>,
+    ) -> Option<PathBuf> {
+        self.container
+            .dialog_service
+            .pick_file(starting_dir, title, filter_name, extensions)
+    }
+
     /// Opens the specified folder in the OS desktop file explorer.
     pub fn open_folder(&self, directory: &Path) {
         self.container.dialog_service.open_in_explorer(directory);
+    }
+
+    /// Opens the specified file using the OS desktop default application.
+    pub fn open_file(&self, path: &Path) {
+        self.container.dialog_service.open_file(path);
     }
 
     /// Loads history records via the container's history repository.

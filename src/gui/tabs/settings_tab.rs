@@ -24,7 +24,11 @@ pub fn render_settings_tab(
     no_eject: &mut bool,
     checksum: &mut bool,
     nfo: &mut bool,
+    file_log_enabled: &mut bool,
+    log_file: &mut String,
     on_browse_out_dir: impl FnOnce(),
+    on_browse_log_file: impl FnOnce(),
+    on_open_log_file: impl FnOnce(),
     on_reset_defaults: impl FnOnce(),
 ) {
     ui.group(|ui| {
@@ -175,6 +179,28 @@ pub fn render_settings_tab(
                 });
             });
 
+            ui.add_space(6.0);
+
+            ui.group(|ui| {
+                ui.label(egui::RichText::new("📝 Application Logging").strong());
+                ui.horizontal(|ui| {
+                    ui.checkbox(file_log_enabled, "Enable Logging to File")
+                        .on_hover_text("When enabled, all application console and transcode logs are appended to the configured log file");
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("Log File Path:");
+                    ui.add(egui::TextEdit::singleline(log_file).desired_width(280.0))
+                        .on_hover_text("Path to the plain-text log file where messages are recorded");
+                    if ui.button("📂 Browse...").on_hover_text("Browse or choose destination log file").clicked() {
+                        on_browse_log_file();
+                    }
+                    if ui.button("📄 Open File").on_hover_text("Opens the log file with your system default text editor").clicked() {
+                        on_open_log_file();
+                    }
+                });
+            });
+
             ui.add_space(10.0);
 
             ui.horizontal(|ui| {
@@ -216,6 +242,8 @@ mod tests {
                 let mut no_eject = false;
                 let mut checksum = true;
                 let mut nfo = true;
+                let mut file_log_enabled = false;
+                let mut log_file = "C:\\test.log".to_string();
 
                 render_settings_tab(
                     ui,
@@ -236,6 +264,10 @@ mod tests {
                     &mut no_eject,
                     &mut checksum,
                     &mut nfo,
+                    &mut file_log_enabled,
+                    &mut log_file,
+                    || {},
+                    || {},
                     || {},
                     || {},
                 );

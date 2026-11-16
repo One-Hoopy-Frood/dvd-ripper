@@ -3,7 +3,7 @@
 
 use eframe::egui;
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
 use std::time::Instant;
@@ -160,6 +160,8 @@ pub struct DvdRipperApp {
     pub speed: String,
     pub status_message: String,
     pub logs: VecDeque<String>,
+    pub file_log_enabled: bool,
+    pub log_file: String,
 
     pub controller: GuiApplicationController,
     pub event_tx: Sender<ProgressEvent>,
@@ -187,6 +189,12 @@ impl Default for DvdRipperApp {
                 .to_string_lossy()
                 .to_string()
         });
+        let default_log_file = cfg.log_file.clone().unwrap_or_else(|| {
+            crate::utils::get_default_log_file_path()
+                .to_string_lossy()
+                .to_string()
+        });
+        let file_log_enabled = cfg.file_log_enabled.unwrap_or(false);
         let initial_window_pos = match (cfg.window_pos_x, cfg.window_pos_y) {
             (Some(x), Some(y))
                 if x.is_finite()
@@ -317,6 +325,8 @@ impl Default for DvdRipperApp {
             speed: "N/A".to_string(),
             status_message: "Ready to rip".to_string(),
             logs: VecDeque::new(),
+            file_log_enabled,
+            log_file: default_log_file,
 
             controller,
             event_tx,
@@ -494,12 +504,62 @@ impl DvdRipperApp {
         }
     }
 
+    pub fn pick_log_file(&mut self) {
+        let current = Path::new(&self.log_file);
+        let starting = if current.is_file() {
+            current.parent()
+        } else if current.is_dir() {
+            Some(current)
+        } else {
+            None
+        };
+        if let Some(file) = self.controller.pick_file(
+            starting,
+            "Select Destination Log File",
+            Some("Log Files (*.log; *.txt)"),
+            Some(&["log", "txt"]),
+        ) {
+            self.log_file = file.to_string_lossy().to_string();
+            self.save_logging_preference();
+        }
+    }
+
+    pub fn open_log_file(&self) {
+        let path = if self.log_file.trim().is_empty() {
+            crate::utils::get_default_log_file_path()
+        } else {
+            PathBuf::from(&self.log_file)
+        };
+        self.controller.open_file(&path);
+    }
+
+    pub fn save_logging_preference(&self) {
+        let mut cfg = crate::config::load_config(None);
+        cfg.file_log_enabled = Some(self.file_log_enabled);
+        cfg.log_file = Some(self.log_file.clone());
+        let _ = crate::config::save_default_config(&cfg);
+    }
+
     pub fn save_current_output_dir_preference(&self) {
         let mut cfg = crate::config::load_config(None);
         cfg.out_dir = Some(self.out_dir.clone());
         cfg.films_dir = Some(self.films_dir.clone());
         cfg.tv_dir = Some(self.tv_dir.clone());
+        cfg.file_log_enabled = Some(self.file_log_enabled);
+        cfg.log_file = Some(self.log_file.clone());
         let _ = crate::config::save_default_config(&cfg);
+    }
+
+    /// Appends a log line to the in-memory ring buffer, and if file logging is enabled, writes to disk.
+    pub fn append_log(&mut self, line: impl Into<String>) {
+        let line_str = line.into();
+        if self.file_log_enabled && !self.log_file.trim().is_empty() {
+            let _ = crate::utils::append_to_log_file(Path::new(&self.log_file), &line_str);
+        }
+        self.logs.push_back(line_str);
+        if self.logs.len() > 500 {
+            self.logs.pop_front();
+        }
     }
 
     pub fn reset_to_defaults(&mut self) {
@@ -518,6 +578,8 @@ impl DvdRipperApp {
         self.no_eject = def.no_eject;
         self.checksum = def.checksum;
         self.nfo = def.nfo;
+        self.file_log_enabled = def.file_log_enabled;
+        self.log_file = def.log_file;
         self.mkv = def.mkv;
         self.transcode = def.transcode;
         self.deinterlace = def.deinterlace;
@@ -1182,10 +1244,7 @@ impl DvdRipperApp {
                         {
                             self.status_message = line.clone();
                         }
-                        self.logs.push_back(line);
-                        if self.logs.len() > 500 {
-                            self.logs.pop_front();
-                        }
+                        self.append_log(line);
                     }
                 }
                 ProgressEvent::SearchResults(candidates) => {
@@ -1497,6 +1556,7 @@ impl DvdRipperApp {
                     } else {
                         self.status_message = format!("Stopped: {}", msg);
                     }
+                    self.append_log(format!("[ERROR] {}", msg));
                 }
             }
         }
@@ -2017,5 +2077,52 @@ mod tests {
         assert!(!app.is_processing_queue);
         assert!(!app.has_queued_jobs_for_drive("D:\\"));
         queue_repo.clear_queue();
+    }
+
+    #[test]
+    fn test_gui_file_logging_configurable_and_disabled() {
+        let temp_dir = std::env::temp_dir().join(format!("test_gui_log_{}", std::process::id()));
+        let test_log_file = temp_dir.join("gui_output.log");
+        let log_file_str = test_log_file.to_string_lossy().to_string();
+
+        let mut app = DvdRipperApp::default();
+        app.log_file = log_file_str.clone();
+
+        // 1. When disabled, logging must NOT write to file
+        app.file_log_enabled = false;
+        let _ = app.event_tx.send(ProgressEvent::Log("Disabled log message 1".to_string()));
+        app.process_events();
+
+        assert!(!test_log_file.exists(), "Log file should not be created when file logging is disabled");
+        assert!(app.logs.iter().any(|l| l.contains("Disabled log message 1")));
+
+        // 2. When enabled, logging MUST write to file
+        app.file_log_enabled = true;
+        let _ = app.event_tx.send(ProgressEvent::Log("Enabled log message 2".to_string()));
+        app.process_events();
+
+        assert!(test_log_file.exists(), "Log file must exist when file logging is enabled");
+        let content = std::fs::read_to_string(&test_log_file).unwrap();
+        assert!(content.contains("Enabled log message 2"));
+        assert!(!content.contains("Disabled log message 1"));
+
+        // 3. When disabled again, subsequent logs must not write to file
+        app.file_log_enabled = false;
+        let _ = app.event_tx.send(ProgressEvent::Log("Disabled log message 3".to_string()));
+        app.process_events();
+
+        let content_after = std::fs::read_to_string(&test_log_file).unwrap();
+        assert!(!content_after.contains("Disabled log message 3"));
+        assert!(app.logs.iter().any(|l| l.contains("Disabled log message 3")));
+
+        // 4. Test open_log_file opens / creates file
+        app.open_log_file();
+        assert!(test_log_file.exists());
+
+        // 5. Test saving logging preferences and resetting defaults
+        app.save_logging_preference();
+        app.reset_to_defaults();
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }
