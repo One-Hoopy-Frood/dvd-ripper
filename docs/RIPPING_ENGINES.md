@@ -59,12 +59,16 @@ graph TD
   - **Demuxer Immunity**: Bypasses all `ffmpeg -f dvdvideo` and `libdvdread` demuxer parsing bugs.
   - **`.BUP` Backup Recovery**: Seamlessly reads `VIDEO_TS.BUP` or `VTS_xx_0.BUP` if the primary `.IFO` has CRC read errors or bad sectors.
   - **Direct Title Set Bypass**: If the root `VIDEO_TS.IFO` is unreadable due to Sony ARccOS protection, it directly discovers and extracts `VTS_01_0.IFO` through `VTS_99_0.IFO`.
-  - **Sector-by-Sector Stepping**: Steps down from 64 KiB block reads to individual 2048-byte sector reads when hitting damaged sectors, safely skipping unreferenced gap traps.
-- **When to use**: Discs where FFmpeg outputs `Invalid IFO for title 0` or halts at arbitrary percentages due to ARccOS/Macrovision bad sector traps.
+  - **Sector-by-Sector Stepping & Instant Cancellation**: Steps down from 64 KiB block reads to individual 2048-byte sector reads when hitting damaged sectors, safely skipping unreferenced gap traps. Every sector read checks cancellation atomically so the Cancel button remains immediately responsive.
+  - **Dual Circuit Breakers**:
+    1. *Sector Short-Circuit*: If 2 consecutive single-sector read retries fail inside a 64 KB block, stops retrying the remaining 30 sectors and pads with MPEG-2 zero filler, saving minutes of drive laser thrashing.
+    2. *Consecutive Block Bailout*: Trips after 8 consecutive damaged blocks (~512 KB), aborting cleanly so `AutoFallbackTranscoder` can advance to MakeMKV.
+- **When to use**: Discs where FFmpeg outputs `Invalid IFO for title 0` or halts at arbitrary percentages due to ARccOS/Macrovision bad sector traps or physical scratches.
 
 ### 2.3. HandBrakeCLI Engine (`--engine handbrake`)
 - **Adapter**: `crate::infrastructure::engines::HandBrakeTranscoder`
 - **How it works**: Spawns `HandBrakeCLI` in headless mode, mapping the job specification to HandBrake's native flags (`-t <title>`, `-c <chapters>`, `-e <encoder>`, `--encoder-preset`, `--all-audio`, `--all-subtitles`, `--comb-detect --decomb`). Real-time progress is scraped from stdout (`Encoding: task 1 of 1, X.XX % (Y.YY fps, avg Z.ZZ fps, ETA HHhMMmSSs)`).
+- **Auto-Discovery**: Automatically finds `HandBrakeCLI` in system `PATH` or standard installation locations (`C:\Program Files\HandBrake\HandBrakeCLI.exe`, `/Applications`, `/usr/bin`).
 - **Strengths**:
   - Mature `libdvdnav` DVD virtual machine emulation.
   - Exceptional motion-adaptive decombing filter (`--comb-detect --decomb`).
@@ -72,21 +76,25 @@ graph TD
 
 ### 2.4. MakeMKV Engine (`--engine makemkv`)
 - **Adapter**: `crate::infrastructure::engines::MakeMkvTranscoder`
-- **How it works**: Spawns `makemkvcon` in robot mode (`-r --progress=-same mkv disc:0 <title_idx> <out_dir>`) and captures real-time progress (`PRGV:current,total,max`). After extraction, it discovers the generated `.mkv` file and renames it to match the configured destination naming hierarchy.
+- **How it works**: Spawns `makemkvcon` in robot mode (`-r --progress=-same mkv dev:<drive> <title_idx> <out_dir>`) and captures real-time progress (`PRGV:current,total,max`). After extraction, it discovers the generated `.mkv` file and renames it to match the configured destination naming hierarchy.
+- **Auto-Discovery**: Automatically scans standard paths on startup:
+  - Windows: `C:\Program Files (x86)\MakeMKV\makemkvcon64.exe`, `C:\Program Files\MakeMKV\makemkvcon64.exe`, `makemkvcon.exe`.
+  - macOS: `/Applications/MakeMKV.app/Contents/MacOS/makemkvcon`, `/opt/homebrew/bin/makemkvcon`.
+  - Linux: `/usr/bin/makemkvcon`, `/usr/local/bin/makemkvcon`.
 - **Strengths**:
-  - **Hardware Optical Decryption**: Directly negotiates drive bus authentication for AACS, BD+, and CSS without external wrappers.
+  - **Hardware Optical Decryption & Low-Level SCSI**: Directly negotiates drive bus authentication for AACS, BD+, and CSS without external wrappers. Communicates with drives via SCSI pass-through for far better scratch error recovery.
   - **Lossless Extraction**: Zero video or audio recompression; 100% original MPEG-2 and Dolby Digital / DTS bitstreams are preserved in a modern Matroska container.
   - **Decoy Title Elimination**: Automatically resolves real feature titles from complex 99-title decoy playlists.
-- **When to use**: Heavily encrypted discs, Criterion/Disney protected releases, or when bit-for-bit lossless archival remuxing is desired.
+- **When to use**: Heavily encrypted discs, Criterion/Disney protected releases, badly scratched media, or when bit-for-bit lossless archival remuxing is desired.
 
 ### 2.5. Auto-Fallback Engine (`--engine auto`) [Default]
 - **Adapter**: `crate::infrastructure::engines::AutoFallbackTranscoder`
 - **How it works**: Orchestrates an intelligent priority cascade:
   1. Attempts primary extraction via **FFmpeg**.
   2. If FFmpeg fails with a copy protection, demuxer, or bad-sector error, automatically falls back to **Native IFO Cell Extractor**.
-  3. If HandBrake is detected in PATH or configured, it is called next.
-  4. If MakeMKV is detected in PATH or configured, it serves as the ultimate decryption fallback.
-- **When to use**: Recommended for all automated, headless daemon, and desktop usage.
+  3. If Native IFO trips its consecutive damaged block circuit breaker, it advances to **MakeMKV** for low-level SCSI pass-through.
+  4. If MakeMKV is unavailable or fails, it calls **HandBrakeCLI**.
+- **When to use**: Recommended for all automated, headless daemon, and desktop usage. For a deep dive, see [`docs/OPTICAL_DISC_SCRATCH_AND_ERROR_RECOVERY.md`](OPTICAL_DISC_SCRATCH_AND_ERROR_RECOVERY.md).
 
 ---
 
@@ -98,12 +106,12 @@ graph TD
 dvd-ripper --cli D: --engine native --search "The Matrix"
 
 # Use HandBrakeCLI with custom binary location
-dvd-ripper --cli D: --engine handbrake --handbrake-path "C:\Program Files\HandBrake\HandBrakeCLI.exe"
+dvd-ripper --cli D: --engine handbrake --handbrake "C:\Program Files\HandBrake\HandBrakeCLI.exe"
 
 # Use MakeMKV for lossless robot-mode remuxing
-dvd-ripper --cli D: --engine makemkv --makemkv-path "C:\Program Files (x86)\MakeMKV\makemkvcon64.exe"
+dvd-ripper --cli D: --engine makemkv --makemkv "C:\Program Files (x86)\MakeMKV\makemkvcon64.exe"
 
-# Default auto-fallback with all tools available in PATH
+# Default auto-fallback with all tools available in PATH or auto-discovered
 dvd-ripper --cli D: --engine auto
 ```
 
@@ -112,9 +120,9 @@ dvd-ripper --cli D: --engine auto
 # Default transcoding engine: "auto", "ffmpeg", "native", "handbrake", or "makemkv"
 engine = "auto"
 
-# Custom executable paths for third-party engines
-handbrake_path = "HandBrakeCLI"
-makemkv_path = "makemkvcon"
+# Custom executable paths for third-party engines (optional; auto-discovered by default)
+handbrake = "HandBrakeCLI"
+makemkv = "makemkvcon"
 ```
 
 ### Desktop GUI
@@ -122,7 +130,7 @@ In the desktop GUI:
 1. Open the **Rip Disc** tab.
 2. In the **Quality & Video Profile** section, open the **Transcoding Engine** dropdown.
 3. Select **Auto Fallback**, **Native IFO Extractor**, **HandBrakeCLI**, or **MakeMKV**.
-4. Configure paths in the **Settings** tab if executables are installed in custom non-system directories.
+4. Configure or browse binary paths in the **Settings** tab via the **`📂 Browse...`** buttons if executables are installed in custom non-system directories.
 
 ---
 

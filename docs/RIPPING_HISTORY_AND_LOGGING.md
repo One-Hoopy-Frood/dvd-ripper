@@ -81,9 +81,40 @@ jq '[.[].file_size_bytes] | add / 1073741824' ~/.dvd-ripper/ripping_history.json
 
 ---
 
-## 4. Audit Trail & Duplicate Detection
+## 5. Diagnostic Runtime File Logging (`dvd-ripper.log`)
 
-The history database serves as an automated safeguard:
-- Prevents re-ripping previously processed optical discs when `--no-overwrite` is active.
-- Helps identify corrupted or incomplete rips (`"status": "Failed"`) for re-processing.
-- Provides compliance logging for media server administration.
+While `ripping_history.json` tracks completed transactional outcomes, `dvd-ripper` also includes a full runtime diagnostic file logging subsystem.
+
+### 5.1 Overview & Architecture
+All application execution events, drive discovery probes, FFmpeg commands and standard error streams, MakeMKV progress packets, and optical read errors are routed to the diagnostic logger:
+- **Default Filepath**: `~/.dvd-ripper/dvd-ripper.log` (Windows: `%USERPROFILE%\.dvd-ripper\dvd-ripper.log`, Linux/macOS: `~/.dvd-ripper/dvd-ripper.log`).
+- **Thread-Safe Appending**: Uses a thread-safe mutex and buffering to ensure logs from background transcoder threads, GUI loops, and child process monitors are preserved in strict chronological order.
+- **Configurable & Disablable**: File logging can be completely toggled off or redirected to any custom path on the filesystem.
+
+### 5.2 Configuring File Logging
+
+#### Via TOML Configuration (`config.toml`)
+```toml
+# Enable logging to disk (default: true)
+file_log_enabled = true
+
+# Optional custom destination log file path
+log_file = "C:\\Users\\User\\.dvd-ripper\\dvd-ripper.log"
+```
+
+#### Via Desktop GUI (Settings Tab)
+1. Open the **⚙️ Settings** tab.
+2. Scroll to the **📝 Application Logging** section.
+3. Check/uncheck **Enable Logging to File** to toggle runtime disk logging.
+4. Modify the **Log File Path** directly or click **📂 Browse...** to select a new destination.
+5. Click **📄 Open Log File** to immediately launch the log in your operating system's default text editor (Notepad, VS Code, TextEdit, etc.) for real-time inspection.
+
+### 5.3 Example Diagnostic Output
+```text
+[2026-11-16 16:30:29] Running command: ffmpeg ["-nostdin", "-stats", "-i", "D:\\", ...]
+[2026-11-16 16:30:29] Ripping Film: Game of Thrones - S02E09 - Blackwater
+[2026-11-16 16:30:30] frame=   48 fps= 46 q=27.0 size= 512KiB time=00:00:01.92
+[2026-11-16 16:35:12] Unable to read next block of PGC (title=2 pgc=2 pg=4 cell=4)
+[2026-11-16 16:35:12] Retrying rip with error-tolerant demux flags enabled...
+```
+

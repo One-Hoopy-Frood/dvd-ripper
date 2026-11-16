@@ -95,14 +95,14 @@ graph TD
 
 ### 3.4 Infrastructure Adapters (`src/infrastructure/`)
 - **`engines/`**:
-  - `native_cell_extractor.rs`: Pure Rust 2048-byte sector Program Chain (`VTS_PGCITI`) extractor with `.BUP` backup table support and bad sector fault recovery.
-  - `handbrake.rs`: HandBrakeCLI adapter leveraging `libdvdnav` virtual machine navigation and hardware decombing.
-  - `makemkv.rs`: MakeMKV robot-mode adapter (`makemkvcon`) with drive bus key extraction (AACS/CSS/BD+) for lossless MKV remuxing.
+  - `native_cell_extractor.rs`: Pure Rust 2048-byte sector Program Chain (`VTS_PGCITI`) extractor with `.BUP` backup table support, dual sector/block circuit breakers, and bad sector fault recovery.
+  - `handbrake.rs`: HandBrakeCLI adapter leveraging `libdvdnav` virtual machine navigation, hardware decombing, and auto-path discovery.
+  - `makemkv.rs`: MakeMKV robot-mode adapter (`makemkvcon`) with drive bus key extraction (AACS/CSS/BD+), low-level SCSI pass-through, and standard installation auto-discovery.
   - `fallback.rs`: Composite priority cascade orchestrator (`AutoFallbackTranscoder`).
 - **`ffmpeg/`**: Modular FFmpeg command assembly (`builder.rs`), process management (`process_runner.rs`), and output progress parsing (`progress_parser.rs`).
 - **`optical/`**: Platform-specific optical drive readers (Windows Win32 API, Linux sysfs, ISO-9660 Sector 16 volume descriptor reader, sub-10ms binary `ifo_parser.rs`).
 - **`metadata/`**: Online metadata fetching via OMDb and TMDb APIs with persistent local fingerprint caching (`fingerprints.json`).
-- **`storage/`**: Enterprise disk space guard checks and thread-safe JSON history repository (`ripping_history.json`).
+- **`storage/`**: Enterprise disk space guard checks, configurable runtime diagnostic file logger (`dvd-ripper.log`), and thread-safe JSON history repository (`ripping_history.json`).
 - **`notifications/`**: Home Assistant MQTT 3.1.1 auto-discovery telemetry and HTTP webhooks (Discord, Telegram, Ntfy, Gotify, Slack).
 - **`ocr/`**: On-the-fly Tesseract OCR execution converting bitmap `dvdsub` overlays to `.srt` SubRip text sidecars.
 

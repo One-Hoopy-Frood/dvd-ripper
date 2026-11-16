@@ -42,10 +42,16 @@ engine = "auto"
 dual_output = false
 # Optical drive acoustic and spindle speed profile: "silent" (4x), "balanced" (8x), or "turbo" (16x+)
 acoustic_profile = "balanced"
-# Custom binary executable path for HandBrakeCLI
-handbrake_path = "HandBrakeCLI"
-# Custom binary executable path for MakeMKV (makemkvcon)
-makemkv_path = "makemkvcon"
+# Custom binary executable path for HandBrakeCLI (also accepts handbrake_path)
+handbrake = "HandBrakeCLI"
+# Custom binary executable path for MakeMKV / makemkvcon (also accepts makemkv_path)
+makemkv = "makemkvcon"
+
+# --- Diagnostic File Logging ---
+# Enable logging application output and transcoder messages to a dedicated file
+file_log_enabled = true
+# Destination log file path (leave commented or empty for default ~/.dvd-ripper/dvd-ripper.log)
+# log_file = "C:\\Users\\User\\.dvd-ripper\\dvd-ripper.log"
 
 # --- Video Encoding & Containers ---
 # Preferred video codec: "h264", "hevc", "av1", or "copy"
@@ -157,6 +163,9 @@ post_script = "/usr/local/bin/post_rip_handler.sh"
 | `--films-dir <NAME>` | | Configurable subfolder name for movie rips | `"Films"` |
 | `--tv-dir <NAME>` | | Configurable subfolder name for TV series rips | `"TV"` |
 | `--config <PATH>` | `-c` | Custom TOML configuration file path | `dvd-ripper.toml` |
+| `--engine <ENGINE>` | | Transcoding engine (`auto`, `ffmpeg`, `native`, `handbrake`, `makemkv`) | `"auto"` |
+| `--handbrake <PATH>` | | Custom executable path to HandBrakeCLI (alias `--handbrake-path`) | `"HandBrakeCLI"` |
+| `--makemkv <PATH>` | | Custom executable path to MakeMKV makemkvcon (alias `--makemkv-path`) | `"makemkvcon"` |
 | `--codec <CODEC>` | | Video codec choice (`h264`, `hevc`, `av1`, `copy`) | `"h264"` |
 | `--profile <PRESET>` | | Transcoding profile (`standard`, `archival`, `plex`, `mobile`) | `"standard"` |
 | `--preset <PRESET>` | | FFmpeg CPU speed preset (`veryfast`, `fast`, `medium`) | `"veryfast"` |

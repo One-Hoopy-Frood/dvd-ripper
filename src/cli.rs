@@ -69,11 +69,11 @@ pub struct Args {
     pub ffmpeg: String,
 
     /// Custom path to HandBrakeCLI executable (default: HandBrakeCLI)
-    #[arg(long = "handbrake", default_value = "HandBrakeCLI")]
+    #[arg(long = "handbrake", alias = "handbrake-path", default_value = "HandBrakeCLI")]
     pub handbrake: String,
 
     /// Custom path to MakeMKV CLI executable (default: makemkvcon)
-    #[arg(long = "makemkv", default_value = "makemkvcon")]
+    #[arg(long = "makemkv", alias = "makemkv-path", default_value = "makemkvcon")]
     pub makemkv: String,
 
     /// Hardware acceleration mode for embedded transcoding (e.g. copy, v4l2m2m, vaapi, nvenc, qsv)

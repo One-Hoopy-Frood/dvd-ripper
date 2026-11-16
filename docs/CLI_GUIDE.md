@@ -53,8 +53,8 @@ By default, launching `dvd-ripper` without arguments opens the graphical desktop
 | `--iso` | `false` | Create a 1:1 sector-by-sector archival ISO image dump directly from optical disc. |
 | `--ignore-errors` | `false` | Enable fault-tolerant demuxing to bypass surface scratches and copy-protection bad sectors. |
 | `--engine <ENGINE>` | `auto` | Transcoding/remuxing engine: `auto` (smart fallback cascade), `ffmpeg` (native demuxer), `native` (pure Rust IFO cell extractor), `handbrake` (HandBrakeCLI), or `makemkv` (MakeMKV robot mode). |
-| `--handbrake-path <PATH>`| `HandBrakeCLI` | Custom executable path to `HandBrakeCLI` binary. |
-| `--makemkv-path <PATH>` | `makemkvcon` | Custom executable path to `makemkvcon` binary. |
+| `--handbrake <PATH>`, `--handbrake-path <PATH>` | `HandBrakeCLI` | Custom executable path to `HandBrakeCLI` binary. |
+| `--makemkv <PATH>`, `--makemkv-path <PATH>` | `makemkvcon` | Custom executable path to `makemkvcon` binary (auto-detects standard installation paths). |
 
 ---
 

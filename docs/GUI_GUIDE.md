@@ -19,19 +19,19 @@ If launching from a terminal or script where command-line flags might be present
 
 ## 2. Interface Overview & Tab Navigation
 
-The desktop interface is organized into **7 core workflow sections and tab views**:
+The desktop interface is organized into **6 core workflow tab views**:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │ 📀 DVD Ripper Desktop                                        [ℹ️ About]│
 ├────────────────────────────────────────────────────────────────────────┤
-│ [Main Rip Tab] [Box Set Manager] [Benchmark] [History Log] [Settings]  │
+│ [🎬 Rip Disc] [📺 TV Box Sets] [📋 Job Queue] [⚡ Benchmark] [📜 History] [⚙️ Settings] │
 ├────────────────────────────────────────────────────────────────────────┤
 │ 1. Drive & Input:  Drive: [ auto ▾ ]   Out Dir: [ Films ]             │
 │ 2. Metadata:      Title: [ Kill Bill ] Year: [ 2003 ] [🔍 Search OMDb] │
 │ 3. Transcode:     [✓] Transcode   Codec: [ H.264 ▾ ]  Profile: [ Standard ▾ ]
 │ 4. Audio & Subs:  [✓] All Audio   [✓] Subtitles    Format: [ dvdsub ▾ ] │
-│ 5. Controls:      [🔍 Scan Disc]  [▶ Start Rip]    [⏹ Cancel]           │
+│ 5. Controls:      [🔍 Scan Disc]  [▶ Start Rip]    [➕ Add to Queue]    │
 ├────────────────────────────────────────────────────────────────────────┤
 │ Target Path: 📁 C:\Media\Films\Kill Bill (2003)\Kill Bill (2003).mp4  │
 │ Progress: [=====================>                  ] 45.2% (28.5 fps) │
@@ -133,17 +133,25 @@ To rip TV show season box sets with custom episode ranges:
 
 ## 6. Auxiliary GUI Tabs
 
-### 6.1 📦 Box Set Manager Tab
-View active multi-disc TV show season tracking records stored in `~/.dvd-ripper/boxsets.json`.
-- Displays Show Title, Season Number, Last Ripped Episode Number, Total Discs Processed, and Last Updated timestamp.
-- Includes **Reset Show Counter** button to reset episode numbering when starting a fresh season rip.
+### 6.1 📋 Job Queue Tab
+The **Job Queue** allows asynchronous batch processing of multiple DVD titles, bonus features, and multi-episode box sets without manual intervention:
+- **Adding to Queue**: From the **🎬 Rip Disc** tab, configure title, audio, subtitle, and output filename, then click **➕ Add to Queue**.
+- **Queue Controls**:
+  - **▶ Start Queue**: Starts executing the pending jobs sequentially.
+  - **⏸ Pause / Resume Queue**: Suspends the queue after the current title completes, or resumes dispatching.
+  - **⏹ Cancel Current Job**: Cancels the actively running rip and moves the queue forward.
+  - **❌ Remove Job**: Deletes the selected pending job from the queue list.
+  - **⬆ Move Up / ⬇ Move Down**: Reorders the priority of pending jobs.
+  - **🗑 Clear Completed**: Removes all finished, failed, or cancelled jobs from view.
+- **Smart Optical Tray Management**: When ripping multiple jobs from the same optical disc, automatic disc tray ejection is **suppressed** between jobs. The tray is only ejected when the final queued job completes (unless `--no-eject` is enabled).
+- For complete operational details, see the dedicated [Job Queue & Batch Processing Guide](file:///c:/Users/User/.gemini/antigravity-ide/scratch/dvd-ripper/docs/JOB_QUEUE_AND_BATCH_PROCESSING.md).
 
 ### 6.2 ⚡ Optical Drive Speed Benchmark Tab
 Execute raw sector throughput diagnostics:
 - Click **⚡ Run Benchmark** to launch a 10-second sector read speed test.
 - Displays read throughput (MB/s), demuxer FPS, and drive rating (`RipLocked`, `Standard 8x`, or `High Speed 16x+`).
 
-### 6.3 📜 History Log Tab
+### 6.3 📜 History Tab
 Browse persistent historical ripping records from `ripping_history.json`:
 - View past completed, cancelled, or failed rip jobs.
 - Displays timestamps, target movie titles, runtime duration, output file paths, and file size in megabytes.
@@ -153,45 +161,63 @@ Browse persistent historical ripping records from `ripping_history.json`:
 
 ## 7. ⚙️ Global Settings & Preferences Tab
 
-The **Settings Tab** provides centralized configuration for engine preferences, binary overrides, custom media taxonomy, and audio mastering profiles. All modifications are automatically persisted to `~/.dvd-ripper/config.toml`.
+The **Settings Tab** provides centralized configuration for engine preferences, binary overrides, custom media taxonomy, diagnostic logging, and audio mastering profiles. All modifications are automatically persisted to `~/.dvd-ripper/config.toml`.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │ ⚙️ Global Settings & Configuration                                      │
 ├────────────────────────────────────────────────────────────────────────┤
 │ 1. Engine & Binary Overrides:                                          │
-│    Primary Engine: [ auto ▾ ]                                          │
-│    FFmpeg Path:      [ C:\ffmpeg\bin\ffmpeg.exe                      ] │
-│    HandBrake Path:   [ C:\HandBrake\HandBrakeCLI.exe                 ] │
-│    MakeMKV Path:     [ C:\Program Files (x86)\MakeMKV\makemkvcon64.exe] │
-│ 2. Storage & Media Taxonomy:                                           │
-│    Base Output Dir:  [ C:\Media                                      ] │
-│    Films Subfolder:  [ Movies              ]  (Default: Films)         │
-│    TV Subfolder:     [ Series              ]  (Default: TV)            │
-│    Taxonomy Preview: ℹ Films: C:\Media\Movies | TV: C:\Media\Series    │
-│ 3. Audio & EBU R128 Loudness Targets:                                  │
-│    Integrated Target LUFS: [-23.0 LUFS ] (Broadcast Standard)          │
-│    True Peak Max:          [-1.5 dBFS  ] (Inter-sample peak safety)    │
-│    Loudness Range LRA:     [ 11.0 LU   ] (Dynamic range envelope)      │
-│ 4. System Maintenance:                                                 │
-│    [↺ Reset to Defaults]                                               │
+│    Primary Engine:   [ auto ▾ ]                                        │
+│    HandBrake Path:   [ C:\HandBrake\HandBrakeCLI.exe     ] [📂 Browse...]│
+│    MakeMKV Path:     [ C:\Program Files\MakeMKV\makemkvcon64.exe] [📂 Browse...]│
+│ 2. Storage & Paths:                                                    │
+│    Default Out Dir:  [ C:\Media                          ] [📂 Browse...]│
+│    Films Subfolder:  [ Films               ] (Default: Films)          │
+│    TV Subfolder:     [ TV                  ] (Default: TV)             │
+│    Min Free Space:   [ 10 GB               ]                           │
+│ 3. Default Transcoding Profile:                                        │
+│    Video Codec: [ H.264 ▾ ]  Profile: [ Standard ▾ ]  Preset: [ veryfast ▾ ]│
+│ 4. Automation & Sidecars:                                              │
+│    [✓] EBU R128 Loudness Normalization [-23.0 LUFS]                    │
+│    [✓] Generate .nfo   [✓] Generate .sha256   [ ] Do not eject disc    │
+│ 5. Automation & Webhooks:                                              │
+│    Webhook URL:      [ https://discord.com/api/webhooks/...          ] │
+│ 6. 📝 Application Logging:                                             │
+│    [✓] Enable Logging to File                                          │
+│    Log File Path:    [ C:\Users\User\.dvd-ripper\dvd-ripper.log]       │
+│                      [📂 Browse...] [📄 Open Log File]                 │
+│ 7. Maintenance:                                                        │
+│    [↺ Reset to Factory Defaults]                                       │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 7.1 Engine & Binary Path Configuration
 - **Primary Engine**: Choose the default extraction pipeline (`auto`, `ffmpeg`, `native`, `handbrake`, or `makemkv`).
-- **Binary Overrides**: Explicitly specify absolute filesystem paths for external CLI tools when they are not located in the system `PATH`. Paths containing spaces or UNC network shares are fully supported.
+- **Binary Overrides & Auto-Discovery**:
+  - Displays executable paths for `HandBrakeCLI` and `makemkvcon`.
+  - Automatically discovers standard installation paths (e.g. `C:\Program Files (x86)\MakeMKV\makemkvcon64.exe` on Windows, `/Applications/MakeMKV.app` on macOS).
+  - **`📂 Browse...`**: Click to launch a native file picker dialog to select your custom binary location.
 
-### 7.2 Media Taxonomy & Folder Customization
-- **Base Output Directory (`out_dir`)**: The root root library destination.
-- **Films Subfolder Name (`films_dir`)**: Name of the movie destination subfolder (defaults to `"Films"`). Users preferring Plex or Jellyfin conventions can configure `"Movies"`, `"Cinema"`, or any localized folder name.
-- **TV Subfolder Name (`tv_dir`)**: Name of the television series subfolder (defaults to `"TV"`). Users can customize this to `"TV Shows"`, `"Series"`, or `"Anime"`.
-- **Sibling Directory Harmonization**: Sibling folder auto-correction honors these custom names bidirectionally.
+### 7.2 Storage & Media Taxonomy
+- **Default Output Directory (`out_dir`)**: Root library destination with `📂 Browse...` picker button.
+- **Films Subfolder Name (`films_dir`)**: Configurable movie destination subfolder (defaults to `"Films"`).
+- **TV Subfolder Name (`tv_dir`)**: Configurable television series subfolder (defaults to `"TV"`).
+- **Minimum Free Disk Space Guard (`min_free_gb`)**: Aborts transcoding if available storage on the target volume drops below the safety threshold.
 
-### 7.3 Audio Loudness & Mastering Standards
-- **EBU R128 Integrated Target (`target_lufs`)**: Configurable slider from `-24.0 LUFS` (EBU R128 television) to `-14.0 LUFS` (Spotify / YouTube web target). Default is `-23.0 LUFS`.
-- **True Peak Threshold (`true_peak`)**: Limits maximum inter-sample peaks between `-2.0 dBFS` and `-0.5 dBFS` (default: `-1.5 dBFS`) to avoid DAC clipping during lossy compression.
-- **Loudness Range Envelope (`loudness_range`)**: Sets target LRA between `7.0 LU` and `20.0 LU` (default: `11.0 LU`).
+### 7.3 Diagnostic File Logging
+- **Enable Logging to File (`file_log_enabled`)**: Checkbox toggling whether application console logs, FFmpeg output, and engine diagnostic messages are written to disk.
+- **Log File Path (`log_file`)**: Configurable filepath where runtime logs are recorded (defaults to `~/.dvd-ripper/dvd-ripper.log`).
+- **`📂 Browse...`**: Native file dialog to select or change the log file destination.
+- **`📄 Open Log File`**: Opens the current log file directly in your operating system's default text editor (e.g. Notepad, TextEdit, VS Code) for immediate troubleshooting.
+
+### 7.4 Audio Loudness & Mastering Standards
+- **EBU R128 Integrated Target (`target_lufs`)**: Configurable slider from `-30.0 LUFS` to `-10.0 LUFS` (default: `-23.0 LUFS`).
+- **NFO & Checksum Sidecars**: Toggle automated creation of `.nfo` metadata and `.sha256` checksum verification files.
+- **Optical Tray Ejection**: Toggle automatic tray ejection upon rip completion.
+
+### 7.5 Reset to Factory Defaults
+- Clicking **`↺ Reset to Factory Defaults`** restores all engine paths, taxonomy folder names, and audio loudness parameters to their factory defaults while preserving rip history and boxset progress.
 
 ### 7.4 Reset to Factory Defaults
 - Clicking **`↺ Reset to Defaults`** restores all engine paths, taxonomy folder names, and audio loudness parameters to their factory defaults while preserving rip history and boxset progress.

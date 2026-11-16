@@ -375,6 +375,8 @@ Detailed user guides and technical architecture documents are available in the [
 - 🏛️ **[SOLID Architecture Guide](docs/SOLID_ARCHITECTURE.md)**: Deep-dive into SRP, OCP, LSP, ISP, DIP, heuristics, & mock architectures.
 - 📁 **[Media Organization Guide](docs/MEDIA_ORGANIZATION.md)**: Plex/Jellyfin folder standards, sibling resolution, NFO & artwork sidecars.
 - 🗂️ **[Custom Media Taxonomy Guide](docs/CUSTOM_MEDIA_TAXONOMY_AND_NAMING.md)**: Configurable Films and TV directories, sibling routing math, and CLI/API integration.
+- 📋 **[Job Queue & Batch Processing Guide](docs/JOB_QUEUE_AND_BATCH_PROCESSING.md)**: Asynchronous queue architecture, multi-job batch sequencing, optical tray ejection suppression, and autoloader coordination.
+- 💿 **[Optical Disc Scratch & Error Recovery Guide](docs/OPTICAL_DISC_SCRATCH_AND_ERROR_RECOVERY.md)**: Physical read failure physics, Windows driver timeout mitigations, sector-level circuit breakers, and 4-engine fallback cascade.
 - 📖 **[CLI User Manual](docs/CLI_GUIDE.md)**: Command-line syntax, modes, filters, and usage examples.
 - 💻 **[Desktop GUI Guide](docs/GUI_GUIDE.md)**: Desktop immediate-mode GUI interface (`eframe`/`egui`), tab controls, search modal, and benchmarks.
 - 🤖 **[Daemon Appliance Guide](docs/DAEMON_APPLIANCE_MODE.md)**: Headless multi-drive watcher, Home Assistant MQTT telemetry, and webhooks.

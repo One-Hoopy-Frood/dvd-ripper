@@ -17,7 +17,9 @@ pub struct AppConfig {
     pub profile: Option<String>,
     pub preset: Option<String>,
     pub engine: Option<String>,
+    #[serde(default, alias = "handbrake_path")]
     pub handbrake: Option<String>,
+    #[serde(default, alias = "makemkv_path")]
     pub makemkv: Option<String>,
     pub mqtt_broker: Option<String>,
     pub webhook_url: Option<String>,
