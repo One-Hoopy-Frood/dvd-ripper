@@ -521,6 +521,12 @@ impl AppContainerBuilder {
         self
     }
 
+    /// Overrides the [`JobQueueRepository`] port implementation.
+    pub fn with_job_queue_repo(mut self, repo: Arc<dyn JobQueueRepository>) -> Self {
+        self.container.job_queue_repo = repo;
+        self
+    }
+
     /// Consumes the builder and returns the configured [`AppContainer`].
     pub fn build(self) -> AppContainer {
         self.container

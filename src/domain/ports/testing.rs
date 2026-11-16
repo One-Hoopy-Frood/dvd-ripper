@@ -220,6 +220,117 @@ impl ProgressObserver for RecordingProgressObserver {
     }
 }
 
+/// Thread-safe, in-memory [`crate::domain::ports::JobQueueRepository`] test double for isolated concurrent testing.
+#[derive(Debug, Default)]
+pub struct InMemoryJobQueueRepository {
+    jobs: Mutex<Vec<crate::queue::JobItem>>,
+}
+
+impl InMemoryJobQueueRepository {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl crate::domain::ports::JobQueueRepository for InMemoryJobQueueRepository {
+    fn name(&self) -> &str {
+        "InMemoryJobQueueRepository"
+    }
+
+    fn add_job(&self, title: &str, media_type: &str, drive: &str) -> String {
+        self.add_job_with_details(title, media_type, drive, None, None, None)
+    }
+
+    fn add_job_with_details(
+        &self,
+        title: &str,
+        media_type: &str,
+        drive: &str,
+        title_number: Option<u32>,
+        season: Option<u32>,
+        episode: Option<u32>,
+    ) -> String {
+        let mut jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        let id = format!("job_{}", jobs.len() + 1);
+        jobs.push(crate::queue::JobItem {
+            id: id.clone(),
+            title: title.to_string(),
+            media_type: media_type.to_string(),
+            drive: drive.to_string(),
+            status: "Queued".to_string(),
+            timestamp: crate::utils::now_timestamp_str(),
+            spool_path: None,
+            output_path: None,
+            progress: 0.0,
+            priority: 1,
+            title_number,
+            season,
+            episode,
+        });
+        id
+    }
+
+    fn list_jobs(&self) -> Vec<crate::queue::JobItem> {
+        self.jobs.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    fn remove_job(&self, id: &str) -> bool {
+        let mut jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(pos) = jobs.iter().position(|j| j.id == id) {
+            jobs.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn next_ready_job(&self) -> Option<crate::queue::JobItem> {
+        let jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        jobs.iter()
+            .find(|j| j.status != "Done" && j.status != "Failed")
+            .cloned()
+    }
+
+    fn update_job_status(&self, id: &str, status: &str, progress: f64) -> bool {
+        let mut jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(job) = jobs.iter_mut().find(|j| j.id == id) {
+            job.status = status.to_string();
+            job.progress = progress;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn move_job_up(&self, id: &str) -> bool {
+        let mut jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(idx) = jobs.iter().position(|j| j.id == id)
+            && idx > 0
+        {
+            jobs.swap(idx, idx - 1);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn move_job_down(&self, id: &str) -> bool {
+        let mut jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(idx) = jobs.iter().position(|j| j.id == id)
+            && idx + 1 < jobs.len()
+        {
+            jobs.swap(idx, idx + 1);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn clear_queue(&self) {
+        self.jobs.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

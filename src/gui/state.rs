@@ -458,10 +458,12 @@ impl DvdRipperApp {
     pub fn with_container(container: Arc<crate::AppContainer>) -> Self {
         let controller = GuiApplicationController::new(container.clone());
         let event_tx = controller.event_tx();
+        let queued_jobs = container.job_queue_repo.list_jobs();
         let mut app = Self {
             container: Some(container),
             controller,
             event_tx,
+            queued_jobs,
             ..Default::default()
         };
         app.trigger_detection();
@@ -1643,6 +1645,7 @@ impl DvdRipperApp {
 mod tests {
     use super::*;
     use crate::domain::entities::media::FilmMetadata;
+    use crate::domain::ports::JobQueueRepository;
     use crate::domain::ports::transcoder::ProgressObserver;
     use std::path::PathBuf;
 
@@ -2031,11 +2034,20 @@ mod tests {
 
     #[test]
     fn test_queue_multi_job_suppresses_eject_and_auto_progresses() {
-        let mut app = DvdRipperApp::default();
-        let queue_repo = app.controller.container().job_queue_repo.clone();
-        queue_repo.clear_queue();
+        let queue_repo = Arc::new(crate::domain::ports::testing::InMemoryJobQueueRepository::new());
+        let container = Arc::new(
+            crate::AppContainer::builder("ffmpeg")
+                .with_job_queue_repo(queue_repo.clone())
+                .build(),
+        );
+        let mut app = DvdRipperApp::with_container(container);
 
-        app.input_drive = "D:\\".to_string();
+        let mock_drive = std::env::temp_dir()
+            .join(format!("mock_queue_drive_{}", std::process::id()))
+            .to_string_lossy()
+            .to_string();
+
+        app.input_drive = mock_drive.clone();
         app.film_name = "Episode 1".to_string();
         app.title_number = 1;
         app.enqueue_current_disc();
@@ -2045,13 +2057,13 @@ mod tests {
         app.enqueue_current_disc();
 
         assert_eq!(queue_repo.list_jobs().len(), 2);
-        assert!(app.has_queued_jobs_for_drive("D:\\"));
+        assert!(app.has_queued_jobs_for_drive(&mock_drive));
 
         // Pop and start first job
         app.start_next_queued_job();
         assert!(app.is_processing_queue);
         assert_eq!(queue_repo.list_jobs().len(), 1);
-        assert!(app.has_queued_jobs_for_drive("D:\\"));
+        assert!(app.has_queued_jobs_for_drive(&mock_drive));
 
         // Simulate successful completion of Episode 1
         app.is_ripping = true;
@@ -2075,7 +2087,7 @@ mod tests {
 
         // Queue complete
         assert!(!app.is_processing_queue);
-        assert!(!app.has_queued_jobs_for_drive("D:\\"));
+        assert!(!app.has_queued_jobs_for_drive(&mock_drive));
         queue_repo.clear_queue();
     }
 
