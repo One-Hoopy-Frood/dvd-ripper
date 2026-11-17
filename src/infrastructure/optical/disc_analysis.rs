@@ -218,16 +218,16 @@ pub fn get_volume_label(root_path: &str) -> Option<String> {
     }
 
     let target_file = Path::new(&dev_path);
-    if target_file.is_file() || target_file.exists() {
-        if let Ok(mut f) = File::open(target_file) {
-            let _ = f.seek(SeekFrom::Start(0x8000));
-            let mut buf = [0u8; 2048];
-            if f.read_exact(&mut buf).is_ok() && buf[0] == 0x01 && &buf[1..6] == b"CD001" {
-                let raw_label = String::from_utf8_lossy(&buf[40..72]);
-                let trimmed = raw_label.trim().to_string();
-                if !trimmed.is_empty() {
-                    return Some(clean_volume_label(&trimmed));
-                }
+    if (target_file.is_file() || target_file.exists())
+        && let Ok(mut f) = File::open(target_file)
+    {
+        let _ = f.seek(SeekFrom::Start(0x8000));
+        let mut buf = [0u8; 2048];
+        if f.read_exact(&mut buf).is_ok() && buf[0] == 0x01 && &buf[1..6] == b"CD001" {
+            let raw_label = String::from_utf8_lossy(&buf[40..72]);
+            let trimmed = raw_label.trim().to_string();
+            if !trimmed.is_empty() {
+                return Some(clean_volume_label(&trimmed));
             }
         }
     }

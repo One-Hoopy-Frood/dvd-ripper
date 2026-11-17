@@ -472,5 +472,7 @@ mod tests {
         let normalized = src.to_normalized_path();
         #[cfg(target_os = "windows")]
         assert_eq!(normalized, PathBuf::from("F:\\"));
+        #[cfg(not(target_os = "windows"))]
+        assert_eq!(normalized, PathBuf::from("/media/F:"));
     }
 }
