@@ -61,6 +61,10 @@ graph LR
 - **Pluggable Post-Processing Pipeline**: `PostProcessorPipeline` allows arbitrary composition of post-processors (NFO generators, checksum calculation, media server refresh triggers, custom shell scripts).
 
 ### Attribute 7: Strong Security
+- **API Server & HTTP Hardening**:
+  - Max concurrent connection limit (`MAX_CONCURRENT_API_CONNECTIONS = 32`) returning HTTP 503 Service Unavailable when saturated.
+  - Sockets protected with strict read and write timeouts (`Duration::from_secs(10)`) preventing Slowloris attacks.
+  - Constant-time string comparison (`subtle::ConstantTimeEq`) for API key bearer token validation.
 - **SSRF (Server-Side Request Forgery) Defense**:
   - `validate_safe_http_url` verifies all webhook and media server URLs before dispatch.
   - Automatically rejects IPv4 loopback (`127.0.0.0/8`), RFC 1918 private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local (`169.254.0.0/16`), and non-standard schemes.
@@ -72,17 +76,19 @@ graph LR
 
 ### Attribute 8: High Testability
 - **In-Memory Test Doubles**: Reusable, thread-safe test doubles in `crate::domain::ports::testing`:
+  - `VirtualOpticalDrive`: Programmable virtual drive simulating discs, custom IFO titles, fingerprints, and tracking tray motor operations without hardware.
   - `InMemoryHistoryRepository`: Volatile history tracking without filesystem I/O.
   - `RecordingNotifier`: Records notification events for test assertions.
   - `FixedDiskSpaceGuard`: Configurable disk space simulation.
   - `RecordingProgressObserver`: Captures progress events and log lines.
-- **Extensive Test Coverage**: Over 376 automated unit tests and integration contract tests executing in under 60 seconds without physical optical hardware or network access.
+- **Extensive Test Coverage**: Over 467 automated unit tests, doc-tests, and integration contract tests executing in under 60 seconds without physical optical hardware or network access.
 
 ### Attribute 9: Compatibility & Portability
 - **Multi-OS Support**: Full support for Windows, Linux, and macOS.
+- **Universal Optical Source Abstraction**: `DvdSource` enum normalizes optical devices (`/dev/sr0`, `\\.\D:`), drive letters (`'D'`), directories, and ISO files across platforms.
 - **Optical Drive Abstraction**: Platform-specific tray eject and drive polling adapters in `infrastructure/optical/` with seamless Win32, Linux IOCTL, and macOS fallbacks.
 
 ### Attribute 10: Low Dependency Footprint
 - **Minimal Core Dependencies**: Pure Rust standard library used for optical parsing, HTTP parsing, and serialization.
-- **Feature Flags**: GUI can be omitted completely via `--no-default-features --features cli` for ultralight container and embedded deployments.
+- **Feature Flags**: GUI (`eframe`, `egui`, `rfd`, `image`) is decoupled and completely optional. `Cargo.toml` defaults to `default = ["cli"]`, enabling lightweight library integration and headless server installations.
 
