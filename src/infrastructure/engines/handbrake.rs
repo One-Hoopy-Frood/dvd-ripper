@@ -91,12 +91,7 @@ impl HandBrakeTranscoder {
             candidates.push("/usr/local/bin/HandBrakeCLI".to_string());
         }
 
-        for candidate in candidates {
-            if Path::new(&candidate).is_file() {
-                return Some(candidate);
-            }
-        }
-        None
+        candidates.into_iter().find(|candidate| Path::new(candidate).is_file())
     }
 
     /// Internal probe verifying whether a HandBrakeCLI binary path responds to `--version`.

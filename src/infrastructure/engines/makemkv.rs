@@ -93,12 +93,7 @@ impl MakeMkvTranscoder {
             candidates.push("/usr/local/bin/makemkvcon".to_string());
         }
 
-        for candidate in candidates {
-            if Path::new(&candidate).is_file() {
-                return Some(candidate);
-            }
-        }
-        None
+        candidates.into_iter().find(|candidate| Path::new(candidate).is_file())
     }
 
     /// Internal probe verifying whether a binary path can be executed and responds.
@@ -208,9 +203,7 @@ impl Transcoder for MakeMkvTranscoder {
             cmd.arg(format!("file:{}", trimmed_src));
         } else {
             let clean = trimmed_src.trim_end_matches('\\').trim_end_matches('/');
-            if clean.len() == 2 && clean.ends_with(':') {
-                cmd.arg(format!("dev:{}", clean));
-            } else if clean.starts_with("/dev/") {
+            if (clean.len() == 2 && clean.ends_with(':')) || clean.starts_with("/dev/") {
                 cmd.arg(format!("dev:{}", clean));
             } else if clean.starts_with("disc:")
                 || clean.starts_with("dev:")
@@ -281,10 +274,10 @@ impl Transcoder for MakeMkvTranscoder {
                         is_saving = true;
                     }
                     current_phase = phase;
-                    if !is_saving {
-                        if let Some(obs) = observer {
-                            obs.on_progress(0.0, "N/A", &current_phase);
-                        }
+                    if !is_saving
+                        && let Some(obs) = observer
+                    {
+                        obs.on_progress(0.0, "N/A", &current_phase);
                     }
                 } else if line.starts_with("MSG:3007") {
                     current_phase = "Scanning disc structure & decrypting CSS keys...".to_string();

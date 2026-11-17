@@ -38,10 +38,10 @@ impl DriveIdentity for PhysicalOpticalDrive {
 
 impl TitleProber for PhysicalOpticalDrive {
     fn probe_titles(&self) -> Vec<DvdTitleInfo> {
-        if let Some(ifo_titles) = super::ifo_parser::probe_dvd_titles_ifo(&self.drive_path) {
-            if !ifo_titles.is_empty() {
-                return ifo_titles;
-            }
+        if let Some(ifo_titles) = super::ifo_parser::probe_dvd_titles_ifo(&self.drive_path)
+            && !ifo_titles.is_empty()
+        {
+            return ifo_titles;
         }
         let titles = crate::ffmpeg::probe_dvd_titles(&self.ffmpeg_path, &self.drive_path, None);
         titles

@@ -112,10 +112,10 @@ pub fn check_disk_space_guard_with_fallback(
     match check_disk_space_guard(primary_dir, min_free_gb) {
         Ok(_) => Ok(primary_dir.to_path_buf()),
         Err(e) => {
-            if let Some(fb) = fallback_dir {
-                if check_disk_space_guard(fb, min_free_gb).is_ok() {
-                    return Ok(fb.to_path_buf());
-                }
+            if let Some(fb) = fallback_dir
+                && check_disk_space_guard(fb, min_free_gb).is_ok()
+            {
+                return Ok(fb.to_path_buf());
             }
             Err(e)
         }
