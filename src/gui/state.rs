@@ -10,9 +10,9 @@ use std::time::Instant;
 
 use super::controller::{GuiApplicationController, RipTaskSpecification};
 use super::tabs::ActiveTab;
+use crate::domain::entities::ProgressEvent;
 use crate::domain::entities::disc::TvEpisodeInfo;
 use crate::dvd::{get_volume_label, normalize_dvd_path};
-use crate::domain::entities::ProgressEvent;
 use crate::history::{RipRecord, load_history, record_rip_event};
 use crate::utils::format_episode_name;
 
@@ -250,7 +250,9 @@ impl Default for DvdRipperApp {
                 .clone()
                 .map(|p| crate::infrastructure::engines::HandBrakeTranscoder::resolve_path(&p))
                 .unwrap_or_else(|| {
-                    crate::infrastructure::engines::HandBrakeTranscoder::resolve_path("HandBrakeCLI")
+                    crate::infrastructure::engines::HandBrakeTranscoder::resolve_path(
+                        "HandBrakeCLI",
+                    )
                 }),
             makemkv_path: cfg
                 .makemkv
@@ -364,7 +366,6 @@ impl DvdRipperApp {
 
     /// Synchronizes main viewport and modal subwindow positions and sizes from `egui::Context` and persists changes.
     pub fn sync_window_state(&mut self, ctx: &egui::Context) {
-
         let (minimized, maximized, outer_pos, inner_size, close_requested) = ctx.input(|i| {
             let vp = i.viewport();
             let min = vp.minimized.unwrap_or(false);
@@ -556,7 +557,11 @@ impl DvdRipperApp {
             starting,
             "Select HandBrakeCLI Executable",
             Some(filter_name),
-            if extensions.is_empty() { None } else { Some(extensions) },
+            if extensions.is_empty() {
+                None
+            } else {
+                Some(extensions)
+            },
         ) {
             self.handbrake_path = file.to_string_lossy().to_string();
             self.save_engine_preferences();
@@ -581,7 +586,11 @@ impl DvdRipperApp {
             starting,
             "Select MakeMKV CLI Binary (makemkvcon / makemkvcon64)",
             Some(filter_name),
-            if extensions.is_empty() { None } else { Some(extensions) },
+            if extensions.is_empty() {
+                None
+            } else {
+                Some(extensions)
+            },
         ) {
             self.makemkv_path = file.to_string_lossy().to_string();
             self.save_engine_preferences();
@@ -992,11 +1001,30 @@ impl DvdRipperApp {
         } else {
             "Movie"
         };
-        let title_num = if self.title_number > 0 { Some(self.title_number) } else { None };
-        let season = if self.is_tv_mode { Some(self.season_number) } else { None };
-        let episode = if self.is_tv_mode { Some(self.start_episode) } else { None };
+        let title_num = if self.title_number > 0 {
+            Some(self.title_number)
+        } else {
+            None
+        };
+        let season = if self.is_tv_mode {
+            Some(self.season_number)
+        } else {
+            None
+        };
+        let episode = if self.is_tv_mode {
+            Some(self.start_episode)
+        } else {
+            None
+        };
         let queue_repo = &self.controller.container().job_queue_repo;
-        let _id = queue_repo.add_job_with_details(&title, media_type, &self.input_drive, title_num, season, episode);
+        let _id = queue_repo.add_job_with_details(
+            &title,
+            media_type,
+            &self.input_drive,
+            title_num,
+            season,
+            episode,
+        );
         self.queued_jobs = queue_repo.list_jobs();
         self.status_message = format!("Added '{}' to batch job queue.", title);
     }
@@ -1083,7 +1111,9 @@ impl DvdRipperApp {
                 .and_then(|t| {
                     self.detected_episodes
                         .iter()
-                        .find(|ep| ep.title_num == t && !self.completed_episodes.contains(&ep.title_num))
+                        .find(|ep| {
+                            ep.title_num == t && !self.completed_episodes.contains(&ep.title_num)
+                        })
                         .or_else(|| self.detected_episodes.iter().find(|ep| ep.title_num == t))
                         .map(|ep| ep.duration_secs)
                 })
@@ -1214,13 +1244,16 @@ impl DvdRipperApp {
             "Movie"
         };
         let cancelled_path = if self.is_tv_mode {
-            let tv_root = crate::domain::naming::resolve_tv_root_custom(&self.out_dir, &self.tv_dir);
+            let tv_root =
+                crate::domain::naming::resolve_tv_root_custom(&self.out_dir, &self.tv_dir);
             tv_root.to_string_lossy().to_string()
         } else {
-            let films_root = crate::domain::naming::resolve_films_root_custom(&self.out_dir, &self.films_dir);
+            let films_root =
+                crate::domain::naming::resolve_films_root_custom(&self.out_dir, &self.films_dir);
             if let Some(film_name) = self.film_name_opt() {
                 let year = self.film_year.trim().parse::<u32>().ok();
-                let stem = crate::domain::naming::format_media_stem(Some(&film_name), year, "DVD_Rip");
+                let stem =
+                    crate::domain::naming::format_media_stem(Some(&film_name), year, "DVD_Rip");
                 let ext = if self.iso_mode {
                     "iso"
                 } else if self.mkv {
@@ -1228,7 +1261,11 @@ impl DvdRipperApp {
                 } else {
                     "mp4"
                 };
-                films_root.join(&stem).join(format!("{}.{}", stem, ext)).to_string_lossy().to_string()
+                films_root
+                    .join(&stem)
+                    .join(format!("{}.{}", stem, ext))
+                    .to_string_lossy()
+                    .to_string()
             } else {
                 films_root.to_string_lossy().to_string()
             }
@@ -1388,11 +1425,20 @@ impl DvdRipperApp {
                     if let Some(ep) = self
                         .detected_episodes
                         .iter()
-                        .find(|e| e.title_num == title_num && !self.completed_episodes.contains(&e.title_num))
-                        .or_else(|| self.detected_episodes.iter().find(|e| e.title_num == title_num))
+                        .find(|e| {
+                            e.title_num == title_num
+                                && !self.completed_episodes.contains(&e.title_num)
+                        })
+                        .or_else(|| {
+                            self.detected_episodes
+                                .iter()
+                                .find(|e| e.title_num == title_num)
+                        })
                     {
-                        self.status_message =
-                            format!("Starting episode: {} (Title #{})...", ep.formatted_name, title_num);
+                        self.status_message = format!(
+                            "Starting episode: {} (Title #{})...",
+                            ep.formatted_name, title_num
+                        );
                     }
                 }
                 ProgressEvent::TvEpisodeCompleted {
@@ -1608,7 +1654,10 @@ impl DvdRipperApp {
                             if !self.no_eject {
                                 let _ = crate::dvd::eject_disc(&self.input_drive);
                             }
-                            self.status_message = format!("All queued jobs completed! Last saved to {}", path.display());
+                            self.status_message = format!(
+                                "All queued jobs completed! Last saved to {}",
+                                path.display()
+                            );
                         }
                     }
                 }
@@ -1650,59 +1699,53 @@ impl DvdRipperApp {
         );
 
         window.show(ctx, |ui| {
-                ui.label("Multiple matches were found on OMDb/IMDb. Select the correct title:");
-                ui.separator();
+            ui.label("Multiple matches were found on OMDb/IMDb. Select the correct title:");
+            ui.separator();
 
-                egui::ScrollArea::vertical()
-                    .max_height(280.0)
-                    .show(ui, |ui| {
-                        for cand in &self.search_candidates {
-                            ui.group(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.vertical(|ui| {
-                                        let year_str = cand
-                                            .year
-                                            .map(|y| format!(" ({})", y))
-                                            .unwrap_or_default();
-                                        let type_str =
-                                            format!("[{}]", cand.type_field.to_uppercase());
-                                        ui.label(
-                                            egui::RichText::new(format!(
-                                                "{} {}",
-                                                cand.title, year_str
-                                            ))
+            egui::ScrollArea::vertical()
+                .max_height(280.0)
+                .show(ui, |ui| {
+                    for cand in &self.search_candidates {
+                        ui.group(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.vertical(|ui| {
+                                    let year_str =
+                                        cand.year.map(|y| format!(" ({})", y)).unwrap_or_default();
+                                    let type_str = format!("[{}]", cand.type_field.to_uppercase());
+                                    ui.label(
+                                        egui::RichText::new(format!("{} {}", cand.title, year_str))
                                             .strong(),
-                                        );
-                                        ui.label(
-                                            egui::RichText::new(format!(
-                                                "Type: {}  |  IMDb ID: {}",
-                                                type_str, cand.imdb_id
-                                            ))
-                                            .small()
-                                            .weak(),
-                                        );
-                                    });
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Center),
-                                        |ui| {
-                                            if ui.button("Select ▶").clicked() {
-                                                selected_id = Some(cand.imdb_id.clone());
-                                            }
-                                        },
+                                    );
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "Type: {}  |  IMDb ID: {}",
+                                            type_str, cand.imdb_id
+                                        ))
+                                        .small()
+                                        .weak(),
                                     );
                                 });
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui.button("Select ▶").clicked() {
+                                            selected_id = Some(cand.imdb_id.clone());
+                                        }
+                                    },
+                                );
                             });
-                            ui.add_space(4.0);
-                        }
-                    });
-
-                ui.separator();
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
-                        self.show_search_modal = false;
+                        });
+                        ui.add_space(4.0);
                     }
                 });
+
+            ui.separator();
+            ui.horizontal(|ui| {
+                if ui.button("Cancel").clicked() {
+                    self.show_search_modal = false;
+                }
             });
+        });
 
         if let Some(imdb_id) = selected_id {
             self.show_search_modal = false;
@@ -2014,9 +2057,15 @@ mod tests {
         assert_eq!(app.start_episode, 3);
         assert_eq!(app.end_episode, Some(4));
         assert_eq!(app.detected_episodes[0].episode_num, 3);
-        assert_eq!(app.detected_episodes[0].formatted_name, "The Office - S01E03");
+        assert_eq!(
+            app.detected_episodes[0].formatted_name,
+            "The Office - S01E03"
+        );
         assert_eq!(app.detected_episodes[1].episode_num, 4);
-        assert_eq!(app.detected_episodes[1].formatted_name, "The Office - S01E04");
+        assert_eq!(
+            app.detected_episodes[1].formatted_name,
+            "The Office - S01E04"
+        );
         assert!(app.completed_episodes.is_empty());
 
         // 3. Complete Disc 2 episodes, then manually change Start Ep # to 5 for Disc 3
@@ -2137,9 +2186,9 @@ mod tests {
 
         // Simulate successful completion of Episode 1
         app.is_ripping = true;
-        let _ = app
-            .event_tx
-            .send(ProgressEvent::Success(PathBuf::from("C:\\Out\\Episode 1.mp4")));
+        let _ = app.event_tx.send(ProgressEvent::Success(PathBuf::from(
+            "C:\\Out\\Episode 1.mp4",
+        )));
         app.process_events();
 
         // Second job should have been automatically picked up without ejecting!
@@ -2150,9 +2199,9 @@ mod tests {
 
         // Simulate successful completion of Episode 2
         app.is_ripping = true;
-        let _ = app
-            .event_tx
-            .send(ProgressEvent::Success(PathBuf::from("C:\\Out\\Episode 2.mp4")));
+        let _ = app.event_tx.send(ProgressEvent::Success(PathBuf::from(
+            "C:\\Out\\Episode 2.mp4",
+        )));
         app.process_events();
 
         // Queue complete
@@ -2172,30 +2221,50 @@ mod tests {
 
         // 1. When disabled, logging must NOT write to file
         app.file_log_enabled = false;
-        let _ = app.event_tx.send(ProgressEvent::Log("Disabled log message 1".to_string()));
+        let _ = app
+            .event_tx
+            .send(ProgressEvent::Log("Disabled log message 1".to_string()));
         app.process_events();
 
-        assert!(!test_log_file.exists(), "Log file should not be created when file logging is disabled");
-        assert!(app.logs.iter().any(|l| l.contains("Disabled log message 1")));
+        assert!(
+            !test_log_file.exists(),
+            "Log file should not be created when file logging is disabled"
+        );
+        assert!(
+            app.logs
+                .iter()
+                .any(|l| l.contains("Disabled log message 1"))
+        );
 
         // 2. When enabled, logging MUST write to file
         app.file_log_enabled = true;
-        let _ = app.event_tx.send(ProgressEvent::Log("Enabled log message 2".to_string()));
+        let _ = app
+            .event_tx
+            .send(ProgressEvent::Log("Enabled log message 2".to_string()));
         app.process_events();
 
-        assert!(test_log_file.exists(), "Log file must exist when file logging is enabled");
+        assert!(
+            test_log_file.exists(),
+            "Log file must exist when file logging is enabled"
+        );
         let content = std::fs::read_to_string(&test_log_file).unwrap();
         assert!(content.contains("Enabled log message 2"));
         assert!(!content.contains("Disabled log message 1"));
 
         // 3. When disabled again, subsequent logs must not write to file
         app.file_log_enabled = false;
-        let _ = app.event_tx.send(ProgressEvent::Log("Disabled log message 3".to_string()));
+        let _ = app
+            .event_tx
+            .send(ProgressEvent::Log("Disabled log message 3".to_string()));
         app.process_events();
 
         let content_after = std::fs::read_to_string(&test_log_file).unwrap();
         assert!(!content_after.contains("Disabled log message 3"));
-        assert!(app.logs.iter().any(|l| l.contains("Disabled log message 3")));
+        assert!(
+            app.logs
+                .iter()
+                .any(|l| l.contains("Disabled log message 3"))
+        );
 
         // 4. Test open_log_file opens / creates file
         app.open_log_file();

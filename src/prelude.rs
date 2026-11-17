@@ -15,8 +15,9 @@
 // Domain Entities
 pub use crate::domain::entities::{
     BoxSetRecord, Chapter, DiscCopyProtectionReport, DiscInfo, DiscOptions, DriveBenchmarkReport,
-    DriveStatusInfo, DvdError, DvdSource, DvdTitleInfo, FilmMetadata, JobItem, JobStatus, MediaType,
-    ProgressEvent, RipProgress, RipRecord, SearchCandidate, TvEpisodeInfo, TvEpisodeMetadata,
+    DriveStatusInfo, DvdError, DvdSource, DvdTitleInfo, FilmMetadata, JobItem, JobStatus,
+    MediaType, ProgressEvent, RipProgress, RipRecord, SearchCandidate, TvEpisodeInfo,
+    TvEpisodeMetadata,
 };
 
 // Domain Ports
@@ -49,14 +50,17 @@ pub use crate::domain::ports::{
 pub use crate::domain::heuristics::{
     ClusterTitleRankingStrategy, DurationClusteringTvStrategy, EpisodeDetectionStrategy,
     LongestTrackStrategy, TitleRankingStrategy, TvDetectionConfig,
-    telecine::{CadenceAnalyzer, FieldOrder, TelecineFilterRecommendation, TelecineMetrics, VideoCadence},
+    telecine::{
+        CadenceAnalyzer, FieldOrder, TelecineFilterRecommendation, TelecineMetrics, VideoCadence,
+    },
 };
 
 // Application Use Cases & DTOs
 pub use crate::application::{
     DiscProbeResult, DrivePool, DualOutputRipRequest, DualOutputRipUseCase, DumpIsoRequest,
-    DumpIsoRequestBuilder, DumpIsoUseCase, ProbeDiscUseCase, RipSingleTitleRequest, RipSingleTitleRequestBuilder, RipSingleTitleUseCase,
-    RipTvBatchRequest, RipTvBatchRequestBuilder, RipTvBatchUseCase,
+    DumpIsoRequestBuilder, DumpIsoUseCase, ProbeDiscUseCase, RipSingleTitleRequest,
+    RipSingleTitleRequestBuilder, RipSingleTitleUseCase, RipTvBatchRequest,
+    RipTvBatchRequestBuilder, RipTvBatchUseCase,
 };
 
 // Infrastructure Adapters (DIP)

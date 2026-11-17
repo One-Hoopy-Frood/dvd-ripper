@@ -46,7 +46,11 @@ pub fn is_named_folder(path: &Path, name: &str) -> bool {
         }
     }
     let full = path.to_string_lossy();
-    let last = full.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or("");
+    let last = full
+        .trim_end_matches(['/', '\\'])
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or("");
     last.eq_ignore_ascii_case(clean)
 }
 
@@ -67,7 +71,9 @@ pub fn is_named_tv(path: &Path) -> bool {
 
 /// Helper: Checks if the path component is named "tv", "tv shows", or matches a custom tv folder name (case-insensitive).
 pub fn is_named_tv_custom(path: &Path, custom_name: &str) -> bool {
-    is_named_folder(path, "tv") || is_named_folder(path, "tv shows") || is_named_folder(path, custom_name)
+    is_named_folder(path, "tv")
+        || is_named_folder(path, "tv shows")
+        || is_named_folder(path, custom_name)
 }
 
 /// Resolves the root destination directory for Film/Movie rips with custom films and tv subfolder names.
@@ -87,15 +93,19 @@ pub fn resolve_films_root_with_tv(out_dir: &str, films_dir: &str, tv_dir: &str) 
     if is_named_films_custom(p, folder_name) {
         p.to_path_buf()
     } else if is_named_tv_custom(p, tv_dir) {
-        let parent = p.parent().filter(|par| !par.as_os_str().is_empty()).map(PathBuf::from).or_else(|| {
-            if let Some(idx) = trimmed.rfind(['/', '\\']) {
-                let parent_str = &trimmed[..idx];
-                if !parent_str.is_empty() {
-                    return Some(PathBuf::from(parent_str));
+        let parent = p
+            .parent()
+            .filter(|par| !par.as_os_str().is_empty())
+            .map(PathBuf::from)
+            .or_else(|| {
+                if let Some(idx) = trimmed.rfind(['/', '\\']) {
+                    let parent_str = &trimmed[..idx];
+                    if !parent_str.is_empty() {
+                        return Some(PathBuf::from(parent_str));
+                    }
                 }
-            }
-            None
-        });
+                None
+            });
         match parent {
             Some(parent) => parent.join(folder_name),
             _ => PathBuf::from(folder_name),
@@ -132,15 +142,19 @@ pub fn resolve_tv_root_with_films(out_dir: &str, tv_dir: &str, films_dir: &str) 
     if is_named_tv_custom(p, folder_name) {
         p.to_path_buf()
     } else if is_named_films_custom(p, films_dir) {
-        let parent = p.parent().filter(|par| !par.as_os_str().is_empty()).map(PathBuf::from).or_else(|| {
-            if let Some(idx) = trimmed.rfind(['/', '\\']) {
-                let parent_str = &trimmed[..idx];
-                if !parent_str.is_empty() {
-                    return Some(PathBuf::from(parent_str));
+        let parent = p
+            .parent()
+            .filter(|par| !par.as_os_str().is_empty())
+            .map(PathBuf::from)
+            .or_else(|| {
+                if let Some(idx) = trimmed.rfind(['/', '\\']) {
+                    let parent_str = &trimmed[..idx];
+                    if !parent_str.is_empty() {
+                        return Some(PathBuf::from(parent_str));
+                    }
                 }
-            }
-            None
-        });
+                None
+            });
         match parent {
             Some(parent) => parent.join(folder_name),
             _ => PathBuf::from(folder_name),
@@ -221,11 +235,18 @@ pub fn resolve_tv_episode_output_path(
     let ep_clean_name = match ep_title {
         Some(t) if !t.trim().is_empty() => format!(
             "{} - S{:02}E{:02} - {}.{}",
-            show_name, season, episode, crate::utils::sanitize_filename(t.trim()), ext
+            show_name,
+            season,
+            episode,
+            crate::utils::sanitize_filename(t.trim()),
+            ext
         ),
         _ => format!("{} - S{:02}E{:02}.{}", show_name, season, episode, ext),
     };
-    tv_root.join(show_stem).join(season_folder).join(ep_clean_name)
+    tv_root
+        .join(show_stem)
+        .join(season_folder)
+        .join(ep_clean_name)
 }
 
 #[cfg(test)]
@@ -315,14 +336,8 @@ mod tests {
             iso: false,
             no_overwrite: false,
         };
-        let p = resolve_tv_episode_output_path(
-            &spec,
-            "Breaking Bad",
-            Some(2008),
-            1,
-            1,
-            Some("Pilot"),
-        );
+        let p =
+            resolve_tv_episode_output_path(&spec, "Breaking Bad", Some(2008), 1, 1, Some("Pilot"));
         let path_str = p.to_string_lossy();
         assert!(path_str.contains("TV"));
         assert!(path_str.contains("Breaking Bad (2008)"));

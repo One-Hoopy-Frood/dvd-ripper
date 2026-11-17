@@ -3,11 +3,7 @@
 use eframe::egui;
 
 /// Renders a standardized drive input text box alongside an auto-detecting ComboBox.
-pub fn render_drive_selector(
-    ui: &mut egui::Ui,
-    id_salt: &str,
-    input_drive: &mut String,
-) {
+pub fn render_drive_selector(ui: &mut egui::Ui, id_salt: &str, input_drive: &mut String) {
     ui.label("Drive:");
     ui.text_edit_singleline(input_drive);
 
@@ -42,4 +38,3 @@ mod tests {
         });
     }
 }
-

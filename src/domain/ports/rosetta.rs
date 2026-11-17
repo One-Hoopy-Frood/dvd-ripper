@@ -64,4 +64,3 @@ pub trait RosettaStoneRegistry: Send + Sync {
     /// Returns the total count of recognized disc profiles in this registry instance.
     fn entry_count(&self) -> usize;
 }
-

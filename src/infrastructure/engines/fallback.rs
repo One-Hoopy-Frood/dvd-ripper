@@ -9,9 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Result, anyhow};
 
-use crate::domain::ports::transcoder::{
-    ProgressObserver, TranscodeJob, Transcoder,
-};
+use crate::domain::ports::transcoder::{ProgressObserver, TranscodeJob, Transcoder};
 
 /// Composite Transcoder that tries multiple engine implementations in priority order.
 pub struct AutoFallbackTranscoder {
@@ -43,7 +41,9 @@ impl Transcoder for AutoFallbackTranscoder {
         cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
         if self.engines.is_empty() {
-            return Err(anyhow!("No transcoding engines registered in AutoFallbackTranscoder."));
+            return Err(anyhow!(
+                "No transcoding engines registered in AutoFallbackTranscoder."
+            ));
         }
 
         let mut last_error = None;
@@ -70,7 +70,8 @@ impl Transcoder for AutoFallbackTranscoder {
                 }
             }
 
-            match engine.transcode_chapter_range(job, chapter_range, observer, cancel_flag.clone()) {
+            match engine.transcode_chapter_range(job, chapter_range, observer, cancel_flag.clone())
+            {
                 Ok(()) => return Ok(()),
                 Err(err) => {
                     let err_str = err.to_string();
@@ -95,8 +96,8 @@ impl Transcoder for AutoFallbackTranscoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
     use crate::domain::ports::testing::RecordingProgressObserver;
+    use std::path::Path;
 
     struct DummyEngine {
         fail: bool,
@@ -136,13 +137,23 @@ mod tests {
         let job = sample_job();
         let res = fallback.transcode(&job, None, None);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("No transcoding engines registered"));
+        assert!(
+            res.unwrap_err()
+                .to_string()
+                .contains("No transcoding engines registered")
+        );
     }
 
     #[test]
     fn test_fallback_first_succeeds() {
-        let e1 = Arc::new(DummyEngine { fail: false, cancel: false });
-        let e2 = Arc::new(DummyEngine { fail: true, cancel: false });
+        let e1 = Arc::new(DummyEngine {
+            fail: false,
+            cancel: false,
+        });
+        let e2 = Arc::new(DummyEngine {
+            fail: true,
+            cancel: false,
+        });
         let fallback = AutoFallbackTranscoder::new(vec![("engine1", e1), ("engine2", e2)]);
 
         let job = sample_job();
@@ -153,8 +164,14 @@ mod tests {
 
     #[test]
     fn test_fallback_first_fails_second_succeeds() {
-        let e1 = Arc::new(DummyEngine { fail: true, cancel: false });
-        let e2 = Arc::new(DummyEngine { fail: false, cancel: false });
+        let e1 = Arc::new(DummyEngine {
+            fail: true,
+            cancel: false,
+        });
+        let e2 = Arc::new(DummyEngine {
+            fail: false,
+            cancel: false,
+        });
         let fallback = AutoFallbackTranscoder::new(vec![("engine1", e1), ("engine2", e2)]);
 
         let job = sample_job();
@@ -168,8 +185,14 @@ mod tests {
 
     #[test]
     fn test_fallback_all_fail() {
-        let e1 = Arc::new(DummyEngine { fail: true, cancel: false });
-        let e2 = Arc::new(DummyEngine { fail: true, cancel: false });
+        let e1 = Arc::new(DummyEngine {
+            fail: true,
+            cancel: false,
+        });
+        let e2 = Arc::new(DummyEngine {
+            fail: true,
+            cancel: false,
+        });
         let fallback = AutoFallbackTranscoder::new(vec![("engine1", e1), ("engine2", e2)]);
 
         let job = sample_job();
@@ -181,7 +204,10 @@ mod tests {
 
     #[test]
     fn test_fallback_cancellation_pre_flag() {
-        let e1 = Arc::new(DummyEngine { fail: false, cancel: false });
+        let e1 = Arc::new(DummyEngine {
+            fail: false,
+            cancel: false,
+        });
         let fallback = AutoFallbackTranscoder::new(vec![("engine1", e1)]);
 
         let job = sample_job();
@@ -193,8 +219,14 @@ mod tests {
 
     #[test]
     fn test_fallback_cancellation_from_sub_engine_aborts_fallback() {
-        let e1 = Arc::new(DummyEngine { fail: false, cancel: true });
-        let e2 = Arc::new(DummyEngine { fail: false, cancel: false });
+        let e1 = Arc::new(DummyEngine {
+            fail: false,
+            cancel: true,
+        });
+        let e2 = Arc::new(DummyEngine {
+            fail: false,
+            cancel: false,
+        });
         let fallback = AutoFallbackTranscoder::new(vec![("engine1", e1), ("engine2", e2)]);
 
         let job = sample_job();
@@ -203,5 +235,3 @@ mod tests {
         assert!(res.unwrap_err().to_string().contains("cancelled by user"));
     }
 }
-
-

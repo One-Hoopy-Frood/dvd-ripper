@@ -1,7 +1,7 @@
 //! Optical disc analysis: volume label extraction, deterministic fingerprinting, and copy protection inspection.
 
-use std::path::{Path, PathBuf};
 use crate::domain::entities::disc::DiscCopyProtectionReport;
+use std::path::{Path, PathBuf};
 
 /// Normalizes a DVD drive or folder path into a clean `PathBuf`.
 pub fn normalize_dvd_path(input: &str) -> PathBuf {
@@ -211,8 +211,7 @@ pub fn get_volume_label(root_path: &str) -> Option<String> {
         root_path.to_string()
     };
 
-    if (dev_path.to_lowercase().ends_with(".iso")
-        || dev_path.to_lowercase().ends_with(".img"))
+    if (dev_path.to_lowercase().ends_with(".iso") || dev_path.to_lowercase().ends_with(".img"))
         && let Some(stem) = std::path::Path::new(&dev_path).file_stem()
     {
         return Some(clean_volume_label(&stem.to_string_lossy()));
@@ -223,10 +222,7 @@ pub fn get_volume_label(root_path: &str) -> Option<String> {
         if let Ok(mut f) = File::open(target_file) {
             let _ = f.seek(SeekFrom::Start(0x8000));
             let mut buf = [0u8; 2048];
-            if f.read_exact(&mut buf).is_ok()
-                && buf[0] == 0x01
-                && &buf[1..6] == b"CD001"
-            {
+            if f.read_exact(&mut buf).is_ok() && buf[0] == 0x01 && &buf[1..6] == b"CD001" {
                 let raw_label = String::from_utf8_lossy(&buf[40..72]);
                 let trimmed = raw_label.trim().to_string();
                 if !trimmed.is_empty() {
@@ -360,7 +356,8 @@ pub fn inspect_disc_copy_protection(dvd_path: &Path) -> DiscCopyProtectionReport
 
     if has_css_indicators {
         diagnostic_notes.push(
-            "Encrypted CSS disc headers detected: decryption keys or MakeMKV/libdvdcss required".to_string(),
+            "Encrypted CSS disc headers detected: decryption keys or MakeMKV/libdvdcss required"
+                .to_string(),
         );
     } else {
         diagnostic_notes.push("No explicit CSS indicators found in VIDEO_TS.IFO".to_string());

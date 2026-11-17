@@ -24,13 +24,11 @@ pub fn build_discord_rich_embed(
         _ => (0x9b59b6, "📀"),                       // Purple
     };
 
-    let mut fields = vec![
-        json!({
-            "name": "Status",
-            "value": format!("{} {}", status_icon, status),
-            "inline": true
-        }),
-    ];
+    let mut fields = vec![json!({
+        "name": "Status",
+        "value": format!("{} {}", status_icon, status),
+        "inline": true
+    })];
 
     if let Some(dur) = duration_str {
         fields.push(json!({
@@ -154,4 +152,3 @@ mod tests {
         assert!(payload.contains("<b>Status:</b> Started"));
     }
 }
-

@@ -57,8 +57,12 @@ where
         total_sink2 += bytes_read as u64;
     }
 
-    sink1.flush().context("StreamTee: failed to flush Archival Master sink")?;
-    sink2.flush().context("StreamTee: failed to flush Transcoder Input sink")?;
+    sink1
+        .flush()
+        .context("StreamTee: failed to flush Archival Master sink")?;
+    sink2
+        .flush()
+        .context("StreamTee: failed to flush Transcoder Input sink")?;
 
     Ok((total_sink1, total_sink2))
 }
@@ -95,4 +99,3 @@ mod tests {
         assert!(res.is_err());
     }
 }
-

@@ -119,9 +119,7 @@ impl Notifier for RecordingNotifier {
                 detail: format!("{:.1}", percent),
             },
             NotificationEvent::RipSuccess {
-                title,
-                output_file,
-                ..
+                title, output_file, ..
             } => RecordedNotification {
                 kind: "RipSuccess".to_string(),
                 title: (*title).to_string(),
@@ -204,10 +202,7 @@ impl RecordingProgressObserver {
 
     /// Returns all log lines recorded so far.
     pub fn logs(&self) -> Vec<String> {
-        self.logs
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
+        self.logs.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 }
 
@@ -564,4 +559,3 @@ mod tests {
         assert_eq!(drive.eject_count(), 1);
     }
 }
-

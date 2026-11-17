@@ -49,8 +49,7 @@ pub fn resolve_vts_ttn_to_pgcn(vts_data: &[u8], vts_ttn: u8) -> usize {
     if ttu_rel < 8 || first_ptt_off + 4 > vts_data.len() {
         return fallback;
     }
-    let pgcn =
-        u16::from_be_bytes([vts_data[first_ptt_off], vts_data[first_ptt_off + 1]]) as usize;
+    let pgcn = u16::from_be_bytes([vts_data[first_ptt_off], vts_data[first_ptt_off + 1]]) as usize;
     if pgcn == 0 { fallback } else { pgcn }
 }
 
@@ -107,33 +106,33 @@ pub fn probe_dvd_titles_ifo(dvd_path: &Path) -> Option<Vec<DvdTitleInfo>> {
                         && vts_data.len() > 0xCC + 4
                     {
                         let pgciti_sec = u32::from_be_bytes([
-                                vts_data[0xCC],
-                                vts_data[0xCD],
-                                vts_data[0xCE],
-                                vts_data[0xCF],
+                            vts_data[0xCC],
+                            vts_data[0xCD],
+                            vts_data[0xCE],
+                            vts_data[0xCF],
+                        ]);
+                        let pgciti_off = (pgciti_sec as usize) * 2048;
+                        let pgcn = resolve_vts_ttn_to_pgcn(&vts_data, vts_ttn);
+                        if vts_ttn > 0 && pgciti_off + 8 + pgcn * 8 <= vts_data.len() {
+                            let pgc_entry_off = pgciti_off + 8 + (pgcn - 1) * 8;
+                            let pgc_start_rel = u32::from_be_bytes([
+                                vts_data[pgc_entry_off + 4],
+                                vts_data[pgc_entry_off + 5],
+                                vts_data[pgc_entry_off + 6],
+                                vts_data[pgc_entry_off + 7],
                             ]);
-                            let pgciti_off = (pgciti_sec as usize) * 2048;
-                            let pgcn = resolve_vts_ttn_to_pgcn(&vts_data, vts_ttn);
-                            if vts_ttn > 0 && pgciti_off + 8 + pgcn * 8 <= vts_data.len() {
-                                let pgc_entry_off = pgciti_off + 8 + (pgcn - 1) * 8;
-                                let pgc_start_rel = u32::from_be_bytes([
-                                    vts_data[pgc_entry_off + 4],
-                                    vts_data[pgc_entry_off + 5],
-                                    vts_data[pgc_entry_off + 6],
-                                    vts_data[pgc_entry_off + 7],
-                                ]);
-                                let pgc_off = pgciti_off + (pgc_start_rel as usize);
-                                if pgc_off + 8 <= vts_data.len() {
-                                    let h_bcd = vts_data[pgc_off + 4];
-                                    let m_bcd = vts_data[pgc_off + 5];
-                                    let s_bcd = vts_data[pgc_off + 6];
-                                    let h = (((h_bcd >> 4) * 10) + (h_bcd & 0x0F)) as f64;
-                                    let m = (((m_bcd >> 4) * 10) + (m_bcd & 0x0F)) as f64;
-                                    let s = (((s_bcd >> 4) * 10) + (s_bcd & 0x0F)) as f64;
-                                    duration_secs = h * 3600.0 + m * 60.0 + s;
-                                }
+                            let pgc_off = pgciti_off + (pgc_start_rel as usize);
+                            if pgc_off + 8 <= vts_data.len() {
+                                let h_bcd = vts_data[pgc_off + 4];
+                                let m_bcd = vts_data[pgc_off + 5];
+                                let s_bcd = vts_data[pgc_off + 6];
+                                let h = (((h_bcd >> 4) * 10) + (h_bcd & 0x0F)) as f64;
+                                let m = (((m_bcd >> 4) * 10) + (m_bcd & 0x0F)) as f64;
+                                let s = (((s_bcd >> 4) * 10) + (s_bcd & 0x0F)) as f64;
+                                duration_secs = h * 3600.0 + m * 60.0 + s;
                             }
                         }
+                    }
 
                     titles.push(DvdTitleInfo {
                         title_num: (t + 1) as u32,
@@ -324,7 +323,8 @@ pub fn probe_title_details_ifo(dvd_path: &Path, title_num: u32) -> Option<TitleS
             {
                 let entry_off = byte_offset + 8 + idx * 12;
                 angles = data[entry_off + 1].max(1);
-                num_chapters = u16::from_be_bytes([data[entry_off + 2], data[entry_off + 3]]) as u32;
+                num_chapters =
+                    u16::from_be_bytes([data[entry_off + 2], data[entry_off + 3]]) as u32;
                 vtsn = data[entry_off + 6];
                 vts_ttn = data[entry_off + 7];
                 ifo_dir_opt = ifo_path.parent().map(|p| p.to_path_buf());
@@ -727,4 +727,3 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
     }
 }
-

@@ -11,9 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context, Result, anyhow};
 
-use crate::domain::ports::transcoder::{
-    ProgressObserver, TranscodeJob, Transcoder,
-};
+use crate::domain::ports::transcoder::{ProgressObserver, TranscodeJob, Transcoder};
 use crate::infrastructure::ffmpeg::ChildGuard;
 
 /// Transcoder implementation powered by MakeMKV's `makemkvcon`.
@@ -93,7 +91,9 @@ impl MakeMkvTranscoder {
             candidates.push("/usr/local/bin/makemkvcon".to_string());
         }
 
-        candidates.into_iter().find(|candidate| Path::new(candidate).is_file())
+        candidates
+            .into_iter()
+            .find(|candidate| Path::new(candidate).is_file())
     }
 
     /// Internal probe verifying whether a binary path can be executed and responds.
@@ -169,20 +169,21 @@ impl Transcoder for MakeMkvTranscoder {
         }
 
         // Snapshot existing .mkv files in out_dir before running MakeMKV
-        let existing_mkvs: std::collections::HashSet<std::path::PathBuf> = std::fs::read_dir(out_dir)
-            .ok()
-            .into_iter()
-            .flatten()
-            .flatten()
-            .map(|e| e.path())
-            .filter(|p| {
-                p.is_file()
-                    && p.extension()
-                        .and_then(|e| e.to_str())
-                        .map(|e| e.eq_ignore_ascii_case("mkv"))
-                        .unwrap_or(false)
-            })
-            .collect();
+        let existing_mkvs: std::collections::HashSet<std::path::PathBuf> =
+            std::fs::read_dir(out_dir)
+                .ok()
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.is_file()
+                        && p.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.eq_ignore_ascii_case("mkv"))
+                            .unwrap_or(false)
+                })
+                .collect();
 
         // makemkvcon mkv disc:<id> or dev:<dev> or file:<path> <title_index> <dest_dir>
         let mut cmd = Command::new(&self.makemkv_path);
@@ -274,9 +275,7 @@ impl Transcoder for MakeMkvTranscoder {
                         is_saving = true;
                     }
                     current_phase = phase;
-                    if !is_saving
-                        && let Some(obs) = observer
-                    {
+                    if !is_saving && let Some(obs) = observer {
                         obs.on_progress(0.0, "N/A", &current_phase);
                     }
                 } else if line.starts_with("MSG:3007") {
@@ -327,7 +326,13 @@ impl Transcoder for MakeMkvTranscoder {
 
         // MakeMKV outputs title00.mkv, title_t00.mkv, or <DISCLABEL>_t00.mkv into out_dir.
         // Identify newly created .mkv and rename to match job.output_path if specified.
-        let dest = if job.output_path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("mkv")).unwrap_or(false) {
+        let dest = if job
+            .output_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.eq_ignore_ascii_case("mkv"))
+            .unwrap_or(false)
+        {
             job.output_path.to_path_buf()
         } else {
             job.output_path.with_extension("mkv")
@@ -362,11 +367,17 @@ impl Transcoder for MakeMkvTranscoder {
                     for entry in fallback_entries.flatten() {
                         let path = entry.path();
                         if path.is_file()
-                            && path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("mkv")).unwrap_or(false)
+                            && path
+                                .extension()
+                                .and_then(|e| e.to_str())
+                                .map(|e| e.eq_ignore_ascii_case("mkv"))
+                                .unwrap_or(false)
                             && path != dest
                             && path != job.output_path
                             && let Some(file_name) = path.file_name().and_then(|n| n.to_str())
-                            && (file_name.starts_with("title") || file_name.starts_with("t0") || file_name.contains("_t"))
+                            && (file_name.starts_with("title")
+                                || file_name.starts_with("t0")
+                                || file_name.contains("_t"))
                         {
                             return Some(path);
                         }
@@ -391,24 +402,23 @@ impl Transcoder for MakeMkvTranscoder {
 
                 if let Err(e) = std::fs::rename(&target, &dest) {
                     // Fallback to copy + remove for cross-filesystem moves
-                    if let Err(copy_err) = std::fs::copy(&target, &dest).and_then(|_| std::fs::remove_file(&target)) {
+                    if let Err(copy_err) =
+                        std::fs::copy(&target, &dest).and_then(|_| std::fs::remove_file(&target))
+                    {
                         if let Some(obs) = observer {
                             obs.on_log(&format!(
                                 "[MakeMKV] Warning: could not move '{}' to '{}': {} / {}",
-                                target.display(), dest.display(), e, copy_err
+                                target.display(),
+                                dest.display(),
+                                e,
+                                copy_err
                             ));
                         }
                     } else if let Some(obs) = observer {
-                        obs.on_log(&format!(
-                            "[MakeMKV] Output saved as '{}'",
-                            dest.display()
-                        ));
+                        obs.on_log(&format!("[MakeMKV] Output saved as '{}'", dest.display()));
                     }
                 } else if let Some(obs) = observer {
-                    obs.on_log(&format!(
-                        "[MakeMKV] Output saved as '{}'",
-                        dest.display()
-                    ));
+                    obs.on_log(&format!("[MakeMKV] Output saved as '{}'", dest.display()));
                 }
             }
         }
@@ -473,7 +483,9 @@ mod tests {
 
     #[test]
     fn test_makemkv_is_available_nonexistent() {
-        assert!(!MakeMkvTranscoder::is_available("nonexistent_makemkvcon_xyz_1234"));
+        assert!(!MakeMkvTranscoder::is_available(
+            "nonexistent_makemkvcon_xyz_1234"
+        ));
     }
 
     #[test]
@@ -491,7 +503,11 @@ mod tests {
 
         let res = transcoder.transcode(&job, None, None);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("Failed to spawn makemkvcon"));
+        assert!(
+            res.unwrap_err()
+                .to_string()
+                .contains("Failed to spawn makemkvcon")
+        );
         let _ = std::fs::remove_dir_all(&tmp);
     }
 

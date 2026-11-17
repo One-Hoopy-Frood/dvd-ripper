@@ -69,7 +69,11 @@ pub struct Args {
     pub ffmpeg: String,
 
     /// Custom path to HandBrakeCLI executable (default: HandBrakeCLI)
-    #[arg(long = "handbrake", alias = "handbrake-path", default_value = "HandBrakeCLI")]
+    #[arg(
+        long = "handbrake",
+        alias = "handbrake-path",
+        default_value = "HandBrakeCLI"
+    )]
     pub handbrake: String,
 
     /// Custom path to MakeMKV CLI executable (default: makemkvcon)

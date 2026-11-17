@@ -45,9 +45,14 @@ mod tests {
     fn test_mock_iso_archiver_contract() {
         let archiver = MockIsoArchiver;
         let bytes = archiver
-            .dump_disc_to_iso(Path::new("D:\\"), Path::new("out.iso"), Some("DISC"), None, None)
+            .dump_disc_to_iso(
+                Path::new("D:\\"),
+                Path::new("out.iso"),
+                Some("DISC"),
+                None,
+                None,
+            )
             .unwrap();
         assert_eq!(bytes, 4_700_000_000);
     }
 }
-

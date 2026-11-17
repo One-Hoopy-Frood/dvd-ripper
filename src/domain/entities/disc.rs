@@ -253,7 +253,9 @@ impl DvdSource {
         let path = std::path::Path::new(trimmed);
         if trimmed.ends_with(".iso") || trimmed.ends_with(".ISO") {
             Self::IsoImage(path.to_path_buf())
-        } else if (trimmed.len() <= 3 && trimmed.contains(':')) || (trimmed.len() == 1 && trimmed.chars().next().unwrap_or(' ').is_ascii_alphabetic()) {
+        } else if (trimmed.len() <= 3 && trimmed.contains(':'))
+            || (trimmed.len() == 1 && trimmed.chars().next().unwrap_or(' ').is_ascii_alphabetic())
+        {
             let ch = trimmed.chars().next().unwrap_or('D').to_ascii_uppercase();
             Self::DriveLetter(ch)
         } else if trimmed.starts_with("/dev/") || trimmed.starts_with(r"\\.\") {

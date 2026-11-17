@@ -41,9 +41,8 @@ pub fn record_and_notify_outcome<T>(
                 ctx.volume_label,
                 ctx.year,
                 Some(ctx.duration_secs),
-                ctx.bytes_written.or_else(|| {
-                    std::fs::metadata(ctx.output_path).ok().map(|m| m.len())
-                }),
+                ctx.bytes_written
+                    .or_else(|| std::fs::metadata(ctx.output_path).ok().map(|m| m.len())),
                 ctx.codec,
                 None,
                 None,
@@ -59,8 +58,7 @@ pub fn record_and_notify_outcome<T>(
             Ok(val)
         }
         Err(e) => {
-            let is_cancelled = cancel_flag
-                .is_some_and(|f| f.load(Ordering::SeqCst))
+            let is_cancelled = cancel_flag.is_some_and(|f| f.load(Ordering::SeqCst))
                 || e.to_string().to_lowercase().contains("cancel");
 
             if is_cancelled {
@@ -75,8 +73,7 @@ pub fn record_and_notify_outcome<T>(
                 Err(DvdError::Cancelled.into())
             } else {
                 let err_str = e.to_string();
-                let record =
-                    RipRecord::new(ctx.display_title, ctx.media_type, &out_str, "Failed");
+                let record = RipRecord::new(ctx.display_title, ctx.media_type, &out_str, "Failed");
                 let _ = history_repo.append_record(&record, None);
 
                 let _ = notifier.send(&NotificationEvent::RipFailed {
@@ -155,4 +152,3 @@ mod tests {
         assert_eq!(records[0].status, "Cancelled");
     }
 }
-

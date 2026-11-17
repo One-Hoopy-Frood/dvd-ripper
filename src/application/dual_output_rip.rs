@@ -7,7 +7,9 @@ use crate::application::lifecycle::{RipOutcomeContext, record_and_notify_outcome
 use crate::domain::entities::media::FilmMetadata;
 use crate::domain::ports::notification::{NotificationEvent, Notifier};
 use crate::domain::ports::storage::{DiskSpaceGuard, HistoryRepository};
-use crate::domain::ports::transcoder::{ProgressObserver, TranscodeJob, TranscodeOptions, Transcoder};
+use crate::domain::ports::transcoder::{
+    ProgressObserver, TranscodeJob, TranscodeOptions, Transcoder,
+};
 use crate::infrastructure::pipeline::stream_tee::tee_stream;
 use anyhow::{Context, Result};
 use std::fs::File;
@@ -61,10 +63,18 @@ impl DualOutputRipUseCase {
         cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
         // 1. Preflight disk space checks for both targets
-        let remux_parent = request.remux_output_path.parent().unwrap_or_else(|| Path::new("."));
-        let transcode_parent = request.transcode_output_path.parent().unwrap_or_else(|| Path::new("."));
-        self.disk_guard.check_free_space(remux_parent, request.min_free_gb)?;
-        self.disk_guard.check_free_space(transcode_parent, request.min_free_gb)?;
+        let remux_parent = request
+            .remux_output_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
+        let transcode_parent = request
+            .transcode_output_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
+        self.disk_guard
+            .check_free_space(remux_parent, request.min_free_gb)?;
+        self.disk_guard
+            .check_free_space(transcode_parent, request.min_free_gb)?;
 
         if let Some(obs) = observer {
             obs.on_log(&format!(
@@ -109,7 +119,8 @@ impl DualOutputRipUseCase {
                 display_title: &request.display_title,
                 expected_duration_secs: request.expected_duration_secs,
             };
-            self.transcoder.transcode(&job, observer, cancel_flag.clone())
+            self.transcoder
+                .transcode(&job, observer, cancel_flag.clone())
         };
 
         let duration_secs = start_time.elapsed().as_secs_f64();
@@ -133,7 +144,9 @@ impl DualOutputRipUseCase {
             volume_label: None,
             year: request.metadata.as_ref().and_then(|m| m.year),
             duration_secs,
-            bytes_written: std::fs::metadata(&request.transcode_output_path).ok().map(|m| m.len()),
+            bytes_written: std::fs::metadata(&request.transcode_output_path)
+                .ok()
+                .map(|m| m.len()),
             codec: Some(request.transcode_options.codec.clone()),
         };
 
@@ -151,8 +164,12 @@ impl DualOutputRipUseCase {
         request: &DualOutputRipRequest,
         cancel_flag: Option<&Arc<AtomicBool>>,
     ) -> Result<()> {
-        let src = File::open(&request.source_dvd)
-            .with_context(|| format!("Failed to open source file {}", request.source_dvd.display()))?;
+        let src = File::open(&request.source_dvd).with_context(|| {
+            format!(
+                "Failed to open source file {}",
+                request.source_dvd.display()
+            )
+        })?;
         let sink1 = File::create(&request.remux_output_path).with_context(|| {
             format!(
                 "Failed to create archival sink {}",
@@ -214,7 +231,10 @@ mod tests {
 
         assert!(remux_out.exists());
         assert!(transcode_out.exists());
-        assert_eq!(std::fs::read(&remux_out).unwrap(), std::fs::read(&transcode_out).unwrap());
+        assert_eq!(
+            std::fs::read(&remux_out).unwrap(),
+            std::fs::read(&transcode_out).unwrap()
+        );
 
         let history_records = history.load_history(None);
         assert_eq!(history_records.len(), 1);
@@ -223,4 +243,3 @@ mod tests {
         let _ = std::fs::remove_dir_all(&temp);
     }
 }
-

@@ -41,7 +41,9 @@ impl Notifier for MediaServerNotifier {
         if let NotificationEvent::RipSuccess { .. } = event {
             trigger_media_servers(
                 self.plex_url.as_deref().zip(self.plex_token.as_deref()),
-                self.jellyfin_url.as_deref().zip(self.jellyfin_api_key.as_deref()),
+                self.jellyfin_url
+                    .as_deref()
+                    .zip(self.jellyfin_api_key.as_deref()),
                 self.emby_url.as_deref().zip(self.emby_api_key.as_deref()),
             );
         }

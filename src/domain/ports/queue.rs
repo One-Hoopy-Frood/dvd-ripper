@@ -34,4 +34,3 @@ pub trait BoxSetRepository: Send + Sync {
     fn reset_tracker(&self, show_name: &str, season: u32) -> bool;
     fn list_boxsets(&self) -> Vec<BoxSetRecord>;
 }
-

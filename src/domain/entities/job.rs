@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 use super::disc::{DriveBenchmarkReport, TitleStreamDetails, TvEpisodeInfo};
 use super::media::{FilmMetadata, SearchCandidate};

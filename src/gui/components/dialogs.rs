@@ -64,34 +64,37 @@ pub fn render_confirm_cancel_dialog(
         subwindow_rects,
     );
     window.show(ctx, |ui| {
-            ui.add_space(6.0);
-            ui.label(
-                egui::RichText::new(format!(
-                    "Ripping is currently {:.1}% complete.",
-                    progress_percent * 100.0
+        ui.add_space(6.0);
+        ui.label(
+            egui::RichText::new(format!(
+                "Ripping is currently {:.1}% complete.",
+                progress_percent * 100.0
+            ))
+            .strong(),
+        );
+        ui.label(
+            "Cancelling will terminate FFmpeg and delete incomplete files from the destination.",
+        );
+        ui.add_space(10.0);
+
+        ui.horizontal(|ui| {
+            if ui.button("▶ Continue Ripping").clicked() {
+                *is_open = false;
+            }
+
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("⏹ Yes, Cancel Rip")
+                        .color(super::super::theme::DANGER_COLOR),
                 ))
-                .strong(),
-            );
-            ui.label("Cancelling will terminate FFmpeg and delete incomplete files from the destination.");
-            ui.add_space(10.0);
-
-            ui.horizontal(|ui| {
-                if ui.button("▶ Continue Ripping").clicked() {
-                    *is_open = false;
-                }
-
-                if ui
-                    .add(egui::Button::new(
-                        egui::RichText::new("⏹ Yes, Cancel Rip").color(super::super::theme::DANGER_COLOR),
-                    ))
-                    .clicked()
-                {
-                    *is_open = false;
-                    on_confirm();
-                }
-            });
-            ui.add_space(4.0);
+                .clicked()
+            {
+                *is_open = false;
+                on_confirm();
+            }
         });
+        ui.add_space(4.0);
+    });
 }
 
 /// Renders a confirmation dialog before clearing rip history records.
@@ -115,37 +118,35 @@ pub fn render_confirm_clear_history_dialog(
         subwindow_rects,
     );
     window.show(ctx, |ui| {
-            ui.add_space(6.0);
-            ui.label(
-                egui::RichText::new(format!(
-                    "Are you sure you want to permanently clear all {} history entries?",
-                    history_count
+        ui.add_space(6.0);
+        ui.label(
+            egui::RichText::new(format!(
+                "Are you sure you want to permanently clear all {} history entries?",
+                history_count
+            ))
+            .strong(),
+        );
+        ui.label("This action removes local record logs but does not delete output video files.");
+        ui.add_space(10.0);
+
+        ui.horizontal(|ui| {
+            if ui.button("Cancel").clicked() {
+                *is_open = false;
+            }
+
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("🗑 Clear All Records")
+                        .color(super::super::theme::DANGER_COLOR),
                 ))
-                .strong(),
-            );
-            ui.label(
-                "This action removes local record logs but does not delete output video files.",
-            );
-            ui.add_space(10.0);
-
-            ui.horizontal(|ui| {
-                if ui.button("Cancel").clicked() {
-                    *is_open = false;
-                }
-
-                if ui
-                    .add(egui::Button::new(
-                        egui::RichText::new("🗑 Clear All Records")
-                            .color(super::super::theme::DANGER_COLOR),
-                    ))
-                    .clicked()
-                {
-                    *is_open = false;
-                    on_confirm();
-                }
-            });
-            ui.add_space(4.0);
+                .clicked()
+            {
+                *is_open = false;
+                on_confirm();
+            }
         });
+        ui.add_space(4.0);
+    });
 }
 
 /// Renders the Interactive Help & Keyboard Shortcuts guide modal.
@@ -247,38 +248,38 @@ pub fn render_about_modal(
         subwindow_rects,
     );
     window.show(ctx, |ui| {
-            ui.add_space(4.0);
-            ui.heading("📀 DVD Ripper Desktop Utility");
-            ui.label(egui::RichText::new(format!("Version {}", env!("CARGO_PKG_VERSION"))).weak());
-            ui.add_space(8.0);
+        ui.add_space(4.0);
+        ui.heading("📀 DVD Ripper Desktop Utility");
+        ui.label(egui::RichText::new(format!("Version {}", env!("CARGO_PKG_VERSION"))).weak());
+        ui.add_space(8.0);
 
-            ui.label("A fast, portable DVD backup utility written in Rust.");
-            ui.label("Features automated transcoding, TV box set episode sequencing,");
-            ui.label("and online IMDb/OMDb metadata matching.");
-            ui.add_space(8.0);
+        ui.label("A fast, portable DVD backup utility written in Rust.");
+        ui.label("Features automated transcoding, TV box set episode sequencing,");
+        ui.label("and online IMDb/OMDb metadata matching.");
+        ui.add_space(8.0);
 
-            ui.label(egui::RichText::new("License: MIT OR Apache-2.0").small());
-            ui.label(
-                egui::RichText::new(format!("FFmpeg Path: {}", ffmpeg_path))
-                    .monospace()
-                    .small(),
+        ui.label(egui::RichText::new("License: MIT OR Apache-2.0").small());
+        ui.label(
+            egui::RichText::new(format!("FFmpeg Path: {}", ffmpeg_path))
+                .monospace()
+                .small(),
+        );
+        ui.add_space(10.0);
+
+        ui.horizontal(|ui| {
+            ui.hyperlink_to(
+                "🌐 GitHub Repository",
+                "https://github.com/clockworkengineer/dvd-ripper",
             );
-            ui.add_space(10.0);
-
-            ui.horizontal(|ui| {
-                ui.hyperlink_to(
-                    "🌐 GitHub Repository",
-                    "https://github.com/clockworkengineer/dvd-ripper",
-                );
-                ui.separator();
-                ui.hyperlink_to("☕ Buy Me a Coffee", "https://buymeacoffee.com/roberttizz1");
-            });
-
-            ui.add_space(10.0);
-            if ui.button("Close").clicked() {
-                *is_open = false;
-            }
+            ui.separator();
+            ui.hyperlink_to("☕ Buy Me a Coffee", "https://buymeacoffee.com/roberttizz1");
         });
+
+        ui.add_space(10.0);
+        if ui.button("Close").clicked() {
+            *is_open = false;
+        }
+    });
 }
 
 #[cfg(test)]

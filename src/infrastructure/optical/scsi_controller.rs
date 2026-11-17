@@ -185,8 +185,8 @@ mod tests {
     fn test_scsi_controller_apply_profile_dummy_path() {
         let supervisor = ScsiSpeedController::new();
         // Should safely execute and not panic even on nonexistent path
-        let res = supervisor.apply_profile(Path::new("Z:\\NonExistent"), DriveAcousticProfile::Silent);
+        let res =
+            supervisor.apply_profile(Path::new("Z:\\NonExistent"), DriveAcousticProfile::Silent);
         assert!(res.is_ok());
     }
 }
-

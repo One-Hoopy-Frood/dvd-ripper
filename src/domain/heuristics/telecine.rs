@@ -142,7 +142,8 @@ impl CadenceAnalyzer {
         }
 
         // 3. Hard 3:2 telecine check (typically ~40% combed frames in 3:2 cadence: 2 out of 5 frames combed)
-        let is_ntsc_rate = (metrics.frame_rate - 29.97).abs() < 0.1 || (metrics.frame_rate - 30.0).abs() < 0.1;
+        let is_ntsc_rate =
+            (metrics.frame_rate - 29.97).abs() < 0.1 || (metrics.frame_rate - 30.0).abs() < 0.1;
         if is_ntsc_rate && (0.25..0.65).contains(&combed_ratio) {
             let confidence = 1.0 - ((combed_ratio - 0.40).abs() / 0.40).clamp(0.0, 1.0);
             return VideoCadence::HardTelecine {
@@ -294,7 +295,10 @@ mod tests {
 
         let cadence = CadenceAnalyzer::classify(&metrics);
         match cadence {
-            VideoCadence::HardTelecine { field_order, confidence } => {
+            VideoCadence::HardTelecine {
+                field_order,
+                confidence,
+            } => {
                 assert_eq!(field_order, FieldOrder::TopFieldFirst);
                 assert!(confidence > 0.90);
             }
@@ -343,4 +347,3 @@ mod tests {
         assert_eq!(FieldOrder::Unknown.as_fieldmatch_order(), "tff");
     }
 }
-

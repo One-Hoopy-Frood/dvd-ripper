@@ -4,7 +4,9 @@ use crate::domain::entities::disc::{DiscInfo, TvEpisodeInfo};
 use crate::domain::entities::media::FilmMetadata;
 use crate::domain::heuristics::cluster_detector::rank_best_title_from_slice;
 use crate::domain::heuristics::tv_detector::detect_tv_episodes_from_titles;
-use crate::domain::heuristics::{EpisodeDetectionStrategy, TitleRankingStrategy, TvDetectionConfig};
+use crate::domain::heuristics::{
+    EpisodeDetectionStrategy, TitleRankingStrategy, TvDetectionConfig,
+};
 use crate::domain::ports::metadata::{DiscFingerprintRepository, MetadataProvider};
 use crate::domain::ports::optical_drive::OpticalDrive;
 use anyhow::Result;

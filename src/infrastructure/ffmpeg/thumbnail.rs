@@ -128,12 +128,8 @@ mod tests {
         assert!(details.audio_streams.is_empty());
 
         // predict_optimal_crf with nonexistent path returns default CRF
-        let (crf, ssim) = prober.predict_optimal_crf(
-            Path::new("Z:\\DefinitelyNonExistent"),
-            1,
-            "x264",
-            0.98,
-        );
+        let (crf, ssim) =
+            prober.predict_optimal_crf(Path::new("Z:\\DefinitelyNonExistent"), 1, "x264", 0.98);
         assert!(crf > 0);
         assert!(ssim >= 0.0);
 

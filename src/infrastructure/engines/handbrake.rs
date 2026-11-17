@@ -91,7 +91,9 @@ impl HandBrakeTranscoder {
             candidates.push("/usr/local/bin/HandBrakeCLI".to_string());
         }
 
-        candidates.into_iter().find(|candidate| Path::new(candidate).is_file())
+        candidates
+            .into_iter()
+            .find(|candidate| Path::new(candidate).is_file())
     }
 
     /// Internal probe verifying whether a HandBrakeCLI binary path responds to `--version`.
@@ -113,11 +115,7 @@ impl HandBrakeTranscoder {
     }
 
     /// Builds the `Command` for executing HandBrakeCLI based on job and options.
-    pub fn build_command(
-        &self,
-        job: &TranscodeJob,
-        chapter_range: Option<(u32, u32)>,
-    ) -> Command {
+    pub fn build_command(&self, job: &TranscodeJob, chapter_range: Option<(u32, u32)>) -> Command {
         let mut cmd = Command::new(&self.handbrake_path);
         crate::utils::configure_silent_command(&mut cmd);
 
@@ -337,7 +335,9 @@ mod tests {
 
     #[test]
     fn test_handbrake_is_available_nonexistent() {
-        assert!(!HandBrakeTranscoder::is_available("nonexistent_handbrake_xyz_1234"));
+        assert!(!HandBrakeTranscoder::is_available(
+            "nonexistent_handbrake_xyz_1234"
+        ));
     }
 
     #[test]
@@ -441,6 +441,10 @@ mod tests {
         };
         let res = hb.transcode(&job, None, None);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("Failed to spawn HandBrakeCLI"));
+        assert!(
+            res.unwrap_err()
+                .to_string()
+                .contains("Failed to spawn HandBrakeCLI")
+        );
     }
 }

@@ -229,7 +229,9 @@ pub fn open_file_in_default_app(path: &Path) {
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let _ = std::process::Command::new("xdg-open").arg(&target_path).spawn();
+        let _ = std::process::Command::new("xdg-open")
+            .arg(&target_path)
+            .spawn();
     }
 }
 
@@ -934,7 +936,9 @@ pub fn trigger_emby_library_scan(url: &str, api_key: &str) -> anyhow::Result<()>
 pub fn trigger_media_server_scans(args: &crate::cli::Args) {
     crate::infrastructure::notifications::media_servers::trigger_media_servers(
         args.plex_url.as_deref().zip(args.plex_token.as_deref()),
-        args.jellyfin_url.as_deref().zip(args.jellyfin_key.as_deref()),
+        args.jellyfin_url
+            .as_deref()
+            .zip(args.jellyfin_key.as_deref()),
         args.emby_url.as_deref().zip(args.emby_key.as_deref()),
     );
 }

@@ -214,13 +214,17 @@ mod tests {
         let registry = LocalRosettaRegistry::new_in_memory();
         assert!(registry.entry_count() >= 3);
 
-        let matrix = registry.lookup("matr1x1999dvd0001").expect("Should find Matrix");
+        let matrix = registry
+            .lookup("matr1x1999dvd0001")
+            .expect("Should find Matrix");
         assert_eq!(matrix.canonical_title, "The Matrix");
         assert_eq!(matrix.release_year, Some(1999));
         assert_eq!(matrix.main_feature_title, 1);
         assert_eq!(matrix.imdb_id.as_deref(), Some("tt0133093"));
 
-        let firefly = registry.lookup("f1refly2002d1dvd0").expect("Should find Firefly");
+        let firefly = registry
+            .lookup("f1refly2002d1dvd0")
+            .expect("Should find Firefly");
         assert!(firefly.is_tv_series);
         assert_eq!(firefly.episodes.len(), 3);
         assert_eq!(firefly.episodes[0].episode_title, "Serenity");
@@ -257,7 +261,10 @@ mod tests {
             let registry = LocalRosettaRegistry::with_storage(&file_path);
             registry.register(custom_entry.clone()).unwrap();
             assert_eq!(
-                registry.lookup("custom_hash_12345").unwrap().canonical_title,
+                registry
+                    .lookup("custom_hash_12345")
+                    .unwrap()
+                    .canonical_title,
                 "Interstellar"
             );
         }

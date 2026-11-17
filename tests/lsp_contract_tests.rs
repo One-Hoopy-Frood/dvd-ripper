@@ -717,4 +717,3 @@ fn test_ocp_http_router_and_sse_metrics_contracts() {
     assert!(msg.starts_with("data: "));
     assert!(msg.contains("Halfway"));
 }
-

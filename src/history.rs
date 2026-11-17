@@ -54,7 +54,10 @@ pub fn record_rip_event(
     status: &str,
 ) -> Result<()> {
     let repo = JsonHistoryRepository::new();
-    repo.append_record(&RipRecord::new(title, media_type, output_path, status), None)
+    repo.append_record(
+        &RipRecord::new(title, media_type, output_path, status),
+        None,
+    )
 }
 
 /// Purges history records older than max_days retention limit.

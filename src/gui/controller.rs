@@ -420,25 +420,25 @@ impl GuiApplicationController {
             }
 
             let trans_options: crate::domain::ports::TranscodeOptions = (&base_args).into();
-            let ffmpeg_transcoder = Arc::new(
-                crate::infrastructure::ffmpeg::FfmpegTranscoder::with_args(
+            let ffmpeg_transcoder =
+                Arc::new(crate::infrastructure::ffmpeg::FfmpegTranscoder::with_args(
                     &spec.ffmpeg_path,
                     base_args.clone(),
-                ),
-            );
-            let native_transcoder = Arc::new(
-                crate::infrastructure::engines::NativeIfoTranscoder::new(
+                ));
+            let native_transcoder =
+                Arc::new(crate::infrastructure::engines::NativeIfoTranscoder::new(
                     &spec.ffmpeg_path,
                     trans_options.clone(),
-                ),
-            );
+                ));
 
             let task_transcoder: Arc<dyn crate::domain::ports::transcoder::Transcoder> =
                 match spec.engine.to_lowercase().as_str() {
-                    "handbrake" => Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
-                        &spec.handbrake_path,
-                        trans_options,
-                    )),
+                    "handbrake" => {
+                        Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
+                            &spec.handbrake_path,
+                            trans_options,
+                        ))
+                    }
                     "makemkv" => Arc::new(crate::infrastructure::engines::MakeMkvTranscoder::new(
                         &spec.makemkv_path,
                     )),
@@ -446,11 +446,16 @@ impl GuiApplicationController {
                     "ffmpeg" => ffmpeg_transcoder,
                     _ => {
                         // "auto": Smart fallback across engines
-                        let mut engines: Vec<(&'static str, Arc<dyn crate::domain::ports::transcoder::Transcoder>)> = vec![
+                        let mut engines: Vec<(
+                            &'static str,
+                            Arc<dyn crate::domain::ports::transcoder::Transcoder>,
+                        )> = vec![
                             ("ffmpeg", ffmpeg_transcoder),
                             ("native_ifo", native_transcoder),
                         ];
-                        if crate::infrastructure::engines::HandBrakeTranscoder::is_available(&spec.handbrake_path) {
+                        if crate::infrastructure::engines::HandBrakeTranscoder::is_available(
+                            &spec.handbrake_path,
+                        ) {
                             engines.push((
                                 "handbrake",
                                 Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
@@ -459,7 +464,9 @@ impl GuiApplicationController {
                                 )),
                             ));
                         }
-                        if crate::infrastructure::engines::MakeMkvTranscoder::is_available(&spec.makemkv_path) {
+                        if crate::infrastructure::engines::MakeMkvTranscoder::is_available(
+                            &spec.makemkv_path,
+                        ) {
                             engines.push((
                                 "makemkv",
                                 Arc::new(crate::infrastructure::engines::MakeMkvTranscoder::new(
@@ -467,7 +474,9 @@ impl GuiApplicationController {
                                 )),
                             ));
                         }
-                        Arc::new(crate::infrastructure::engines::AutoFallbackTranscoder::new(engines))
+                        Arc::new(crate::infrastructure::engines::AutoFallbackTranscoder::new(
+                            engines,
+                        ))
                     }
                 };
             let single_title_uc = crate::application::rip_single_title::RipSingleTitleUseCase::new(
@@ -564,7 +573,9 @@ impl GuiApplicationController {
                         spec.detected_episodes.len(),
                         show_name
                     )));
-                    let ext = if spec.encoding_options.mkv || spec.engine.eq_ignore_ascii_case("makemkv") {
+                    let ext = if spec.encoding_options.mkv
+                        || spec.engine.eq_ignore_ascii_case("makemkv")
+                    {
                         "mkv"
                     } else {
                         "mp4"
@@ -602,11 +613,8 @@ impl GuiApplicationController {
                     };
 
                     let observer = super::state::GuiProgressObserver { tx: tx.clone() };
-                    match tv_batch_uc.execute(
-                        &request,
-                        Some(&observer),
-                        Some(cancel_flag.clone()),
-                    ) {
+                    match tv_batch_uc.execute(&request, Some(&observer), Some(cancel_flag.clone()))
+                    {
                         Ok(count) => {
                             let _ = tx.send(ProgressEvent::Log(format!(
                                 "Batch rip complete: {} episodes ripped.",

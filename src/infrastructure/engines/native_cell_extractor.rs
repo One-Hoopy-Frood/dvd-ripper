@@ -103,10 +103,12 @@ pub fn build_native_cell_plan(
             if let Ok(data) = std::fs::read(&candidate)
                 && data.len() >= 0xC8
             {
-                let sector_offset = u32::from_be_bytes([data[0xc4], data[0xc5], data[0xc6], data[0xc7]]);
+                let sector_offset =
+                    u32::from_be_bytes([data[0xc4], data[0xc5], data[0xc6], data[0xc7]]);
                 let byte_offset = (sector_offset as usize) * 2048;
                 if byte_offset + 8 <= data.len() {
-                    let nr_titles = u16::from_be_bytes([data[byte_offset], data[byte_offset + 1]]) as usize;
+                    let nr_titles =
+                        u16::from_be_bytes([data[byte_offset], data[byte_offset + 1]]) as usize;
                     if let Some(idx) = (title_num as usize).checked_sub(1)
                         && idx < nr_titles
                         && byte_offset + 8 + (idx + 1) * 12 <= data.len()
@@ -149,8 +151,8 @@ pub fn build_native_cell_plan(
                             u32::from_be_bytes([d[0xC8], d[0xC9], d[0xCA], d[0xCB]]) as usize;
                         let ptt_srpt_off = ptt_srpt_sec * 2048;
                         if ptt_srpt_off + 2 <= d.len() {
-                            nr_ttu = u16::from_be_bytes([d[ptt_srpt_off], d[ptt_srpt_off + 1]])
-                                as usize;
+                            nr_ttu =
+                                u16::from_be_bytes([d[ptt_srpt_off], d[ptt_srpt_off + 1]]) as usize;
                         }
                     }
 
@@ -160,8 +162,8 @@ pub fn build_native_cell_plan(
                             u32::from_be_bytes([d[0xCC], d[0xCD], d[0xCE], d[0xCF]]) as usize;
                         let pgciti_off = pgciti_sec * 2048;
                         if pgciti_off + 2 <= d.len() {
-                            nr_pgcs = u16::from_be_bytes([d[pgciti_off], d[pgciti_off + 1]])
-                                as usize;
+                            nr_pgcs =
+                                u16::from_be_bytes([d[pgciti_off], d[pgciti_off + 1]]) as usize;
                         }
                     }
 
@@ -259,7 +261,9 @@ pub fn build_native_cell_plan(
     let selected_cells = if let Some((start_ch, end_ch)) = chapter_range {
         let pg_map_off = pgc_off + pg_map_rel;
         if pg_map_rel > 0 && nr_programs > 0 && pg_map_off + nr_programs <= vts_data.len() {
-            let s_prog = (start_ch.max(1) as usize).saturating_sub(1).min(nr_programs - 1);
+            let s_prog = (start_ch.max(1) as usize)
+                .saturating_sub(1)
+                .min(nr_programs - 1);
             let e_prog = (end_ch.max(start_ch) as usize)
                 .saturating_sub(1)
                 .min(nr_programs - 1);
@@ -448,7 +452,9 @@ pub fn extract_pgc_cells_to_file(
                             {
                                 drop(writer);
                                 let _ = std::fs::remove_file(output_vob_path);
-                                return Err(anyhow!("Native IFO cell extraction cancelled by user."));
+                                return Err(anyhow!(
+                                    "Native IFO cell extraction cancelled by user."
+                                ));
                             }
 
                             // If 2 consecutive single sectors fail, avoid freezing the optical bus with 30 more hardware timeouts
@@ -486,7 +492,10 @@ pub fn extract_pgc_cells_to_file(
             cur_sec += sectors_to_read as u64;
             copied_sectors += sectors_to_read as u64;
 
-            if copied_sectors.is_multiple_of(128) || copied_sectors >= total_sectors || consecutive_damaged_chunks > 0 {
+            if copied_sectors.is_multiple_of(128)
+                || copied_sectors >= total_sectors
+                || consecutive_damaged_chunks > 0
+            {
                 let pct = ((copied_sectors as f64 / total_sectors as f64) * 100.0).clamp(0.0, 99.5);
                 let elapsed = start_instant.elapsed().as_secs_f64().max(0.001);
                 let mb_s = ((copied_sectors * DVD_SECTOR_BYTES) as f64 / 1_048_576.0) / elapsed;
@@ -644,7 +653,8 @@ impl Transcoder for NativeIfoTranscoder {
         let status = cmd.status();
         let _ = std::fs::remove_file(&temp_vob);
 
-        let exit = status.context("Failed to execute FFmpeg container mux after native cell extraction")?;
+        let exit = status
+            .context("Failed to execute FFmpeg container mux after native cell extraction")?;
         if !exit.success() {
             return Err(anyhow!(
                 "Container muxing exited with non-zero status: {}",
@@ -767,7 +777,11 @@ mod tests {
         let out = std::env::temp_dir().join("empty_out.mpg");
         let res = extract_pgc_cells_to_file(Path::new("."), &empty_plan, &out, None, None);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("No VTS_01_1..9.VOB files found"));
+        assert!(
+            res.unwrap_err()
+                .to_string()
+                .contains("No VTS_01_1..9.VOB files found")
+        );
 
         // Test cancel flag with valid dummy VOB
         let tmp = std::env::temp_dir().join(format!("vob_cancel_test_{}", std::process::id()));
@@ -785,9 +799,15 @@ mod tests {
         };
         let flag = Arc::new(AtomicBool::new(true));
         let cancel_out = tmp.join("cancel_out.mpg");
-        let res_cancel = extract_pgc_cells_to_file(&tmp, &plan_with_cells, &cancel_out, None, Some(&flag));
+        let res_cancel =
+            extract_pgc_cells_to_file(&tmp, &plan_with_cells, &cancel_out, None, Some(&flag));
         assert!(res_cancel.is_err());
-        assert!(res_cancel.unwrap_err().to_string().contains("cancelled by user"));
+        assert!(
+            res_cancel
+                .unwrap_err()
+                .to_string()
+                .contains("cancelled by user")
+        );
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -803,7 +823,10 @@ mod tests {
         };
         let res = transcoder.transcode(&job, None, None);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("could not locate valid PGC cell table"));
+        assert!(
+            res.unwrap_err()
+                .to_string()
+                .contains("could not locate valid PGC cell table")
+        );
     }
 }
-

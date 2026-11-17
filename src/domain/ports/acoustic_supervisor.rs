@@ -24,9 +24,9 @@ impl DriveAcousticProfile {
     /// (1x DVD = 1,385 KB/s).
     pub fn target_dvd_read_kbps(&self) -> u32 {
         match self {
-            Self::Silent => 5_540,      // ~4x
-            Self::Balanced => 11_080,   // ~8x
-            Self::Turbo => 0xFFFF,      // Maximum drive capability
+            Self::Silent => 5_540,    // ~4x
+            Self::Balanced => 11_080, // ~8x
+            Self::Turbo => 0xFFFF,    // Maximum drive capability
         }
     }
 
@@ -57,12 +57,26 @@ mod tests {
     #[test]
     fn test_drive_acoustic_profiles() {
         assert_eq!(DriveAcousticProfile::Silent.target_dvd_read_kbps(), 5_540);
-        assert_eq!(DriveAcousticProfile::Balanced.target_dvd_read_kbps(), 11_080);
+        assert_eq!(
+            DriveAcousticProfile::Balanced.target_dvd_read_kbps(),
+            11_080
+        );
         assert_eq!(DriveAcousticProfile::Turbo.target_dvd_read_kbps(), 0xFFFF);
 
-        assert!(DriveAcousticProfile::Silent.display_label().contains("Silent"));
-        assert!(DriveAcousticProfile::Balanced.display_label().contains("Balanced"));
-        assert!(DriveAcousticProfile::Turbo.display_label().contains("Turbo"));
+        assert!(
+            DriveAcousticProfile::Silent
+                .display_label()
+                .contains("Silent")
+        );
+        assert!(
+            DriveAcousticProfile::Balanced
+                .display_label()
+                .contains("Balanced")
+        );
+        assert!(
+            DriveAcousticProfile::Turbo
+                .display_label()
+                .contains("Turbo")
+        );
     }
 }
-

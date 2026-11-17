@@ -24,8 +24,8 @@ pub fn format_episode_filename(show_name: &str, season: u32, episode: u32) -> St
 
 pub use crate::domain::naming::{
     is_named_films, is_named_films_custom, is_named_folder, is_named_tv, is_named_tv_custom,
-    resolve_films_root, resolve_films_root_custom, resolve_films_root_with_tv,
-    resolve_tv_root, resolve_tv_root_custom, resolve_tv_root_with_films,
+    resolve_films_root, resolve_films_root_custom, resolve_films_root_with_tv, resolve_tv_root,
+    resolve_tv_root_custom, resolve_tv_root_with_films,
 };
 
 /// Helper: Ensures parent directories exist and returns absolute path with optional collision incrementing.
@@ -120,7 +120,8 @@ pub fn resolve_output_path(
     };
     let films_root = resolve_films_root_with_tv(&args.out_dir, films_dir, tv_dir);
 
-    let target_candidate = if let Some(name) = film_name.map(|s| s.trim()).filter(|s| !s.is_empty()) {
+    let target_candidate = if let Some(name) = film_name.map(|s| s.trim()).filter(|s| !s.is_empty())
+    {
         let clean_name = crate::utils::sanitize_filename(name);
         let clean = if clean_name.is_empty() {
             "DVD_Rip".to_string()
@@ -416,7 +417,11 @@ pub fn format_tv_season_folder_custom(
     season: u32,
     tv_dir: &str,
 ) -> PathBuf {
-    let folder = if tv_dir.trim().is_empty() { "TV" } else { tv_dir.trim() };
+    let folder = if tv_dir.trim().is_empty() {
+        "TV"
+    } else {
+        tv_dir.trim()
+    };
     let clean_show = crate::utils::sanitize_filename(show_name);
     let folder_name = format_title_folder_name(&clean_show, year);
     PathBuf::from(folder)
@@ -433,7 +438,11 @@ pub fn format_movie_folder(title: &str, year: Option<u32>) -> PathBuf {
 /// Formats a standardized movie directory relative path with a custom films subfolder.
 #[allow(dead_code)]
 pub fn format_movie_folder_custom(title: &str, year: Option<u32>, films_dir: &str) -> PathBuf {
-    let folder = if films_dir.trim().is_empty() { "Films" } else { films_dir.trim() };
+    let folder = if films_dir.trim().is_empty() {
+        "Films"
+    } else {
+        films_dir.trim()
+    };
     let clean_title = crate::utils::sanitize_filename(title);
     let folder_name = format_title_folder_name(&clean_title, year);
     PathBuf::from(folder).join(folder_name)
@@ -1531,8 +1540,8 @@ impl<'a> RipEvaluationContext<'a> {
             .is_some_and(|total| {
                 self.last_progress_secs > 0.0 && self.last_progress_secs < total * 0.85
             });
-        let is_premature_demux_error = self.demux_error
-            && (self.output_size < min_valid_size || is_premature_truncation);
+        let is_premature_demux_error =
+            self.demux_error && (self.output_size < min_valid_size || is_premature_truncation);
         let is_fatal_error = self.output_size == 0
             || is_premature_demux_error
             || is_premature_truncation
@@ -1887,8 +1896,9 @@ pub fn run_ffmpeg_with_channel(
                                     let speed = extract_kv_field(&line, "speed=")
                                         .unwrap_or("N/A")
                                         .to_string();
-                                    let fps =
-                                        extract_kv_field(&line, "fps=").unwrap_or("N/A").to_string();
+                                    let fps = extract_kv_field(&line, "fps=")
+                                        .unwrap_or("N/A")
+                                        .to_string();
                                     (secs, fps, speed)
                                 })
                             })
@@ -2541,11 +2551,27 @@ mod tests {
         };
         let movie_path = resolve_output_path(&args, Some("Gladiator"), Some(2000)).unwrap();
         assert!(movie_path.to_string_lossy().contains("Movies"));
-        assert!(movie_path.to_string_lossy().contains("Gladiator (2000).mkv"));
+        assert!(
+            movie_path
+                .to_string_lossy()
+                .contains("Gladiator (2000).mkv")
+        );
 
-        let tv_path = resolve_tv_output_path_with_title(&args, Some("Firefly"), Some(2002), 1, 1, Some("Serenity")).unwrap();
+        let tv_path = resolve_tv_output_path_with_title(
+            &args,
+            Some("Firefly"),
+            Some(2002),
+            1,
+            1,
+            Some("Serenity"),
+        )
+        .unwrap();
         assert!(tv_path.to_string_lossy().contains("Series"));
-        assert!(tv_path.to_string_lossy().contains("Firefly - S01E01 - Serenity.mkv"));
+        assert!(
+            tv_path
+                .to_string_lossy()
+                .contains("Firefly - S01E01 - Serenity.mkv")
+        );
     }
 
     #[test]
@@ -3435,11 +3461,7 @@ mod tests {
         assert!(cd_args.contains(&"flac".to_string()));
         assert!(cd_args.contains(&"album=Dark Side of the Moon".to_string()));
 
-        let m3u8 = generate_m3u8_playlist(&[(
-            "Speak to Me".to_string(),
-            90.4,
-            track_flac,
-        )]);
+        let m3u8 = generate_m3u8_playlist(&[("Speak to Me".to_string(), 90.4, track_flac)]);
         assert!(m3u8.starts_with("#EXTM3U\n"));
         assert!(m3u8.contains("#EXTINF:90,Speak to Me\n01 - Speak to Me.flac"));
 
@@ -3470,7 +3492,10 @@ mod tests {
             RipOutcome::FatalError(err) => {
                 assert!(err.contains("stopped early at 60.0%"));
             }
-            other => panic!("Expected FatalError for 60% truncated episode, got {:?}", other),
+            other => panic!(
+                "Expected FatalError for 60% truncated episode, got {:?}",
+                other
+            ),
         }
     }
 

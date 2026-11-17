@@ -237,4 +237,3 @@ mod tests {
         assert_eq!(a_filters, vec!["loudnorm=I=-16:TP=-1.5:LRA=11"]);
     }
 }
-

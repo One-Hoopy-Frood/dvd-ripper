@@ -8,8 +8,7 @@
 /// Color 1: Bright White text body
 /// Color 2: Deep Black outer contour border
 /// Color 3: Neutral Gray anti-aliasing blend
-pub const BROADCAST_STANDARD_PALETTE_HEX: &str =
-    "000000, ffffff, 101010, 808080, \
+pub const BROADCAST_STANDARD_PALETTE_HEX: &str = "000000, ffffff, 101010, 808080, \
      202020, e0e0e0, 404040, a0a0a0, \
      181818, d8d8d8, 303030, 909090, \
      282828, c8c8c8, 505050, b0b0b0";
@@ -126,7 +125,10 @@ pub fn clean_advanced_ocr_text(raw_text: &str) -> String {
         text = text.replace(" 0f ", " of ").replace(" 0n ", " on ");
 
         // Strip stray leading/trailing pipes and tildes
-        text = text.trim_matches(|c: char| c == '|' || c == '~' || c == '_').trim().to_string();
+        text = text
+            .trim_matches(|c: char| c == '|' || c == '~' || c == '_')
+            .trim()
+            .to_string();
 
         if !text.is_empty() {
             cleaned_lines.push(text);
@@ -186,4 +188,3 @@ id: en, index: 0
         assert_eq!(cleaned, "Wait—did you hear that?");
     }
 }
-

@@ -14,9 +14,7 @@ pub fn quick_xml_escape(input: &str) -> String {
 
 /// Resolves sidecar `.nfo` metadata file path from video output path.
 pub fn resolve_nfo_path(video_path: &Path) -> PathBuf {
-    let parent = video_path
-        .parent()
-        .unwrap_or_else(|| Path::new("."));
+    let parent = video_path.parent().unwrap_or_else(|| Path::new("."));
     let stem = video_path
         .file_stem()
         .and_then(|s| s.to_str())

@@ -1022,8 +1022,12 @@ pub fn start_embedded_api_server(port: u16, drive_path: String) -> Result<()> {
         for mut stream in listener.incoming().flatten() {
             let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(10)));
             let _ = stream.set_write_timeout(Some(std::time::Duration::from_secs(10)));
-            if active_connections.load(std::sync::atomic::Ordering::Relaxed) >= MAX_CONCURRENT_API_CONNECTIONS {
-                let _ = stream.write_all(b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\nServer Busy");
+            if active_connections.load(std::sync::atomic::Ordering::Relaxed)
+                >= MAX_CONCURRENT_API_CONNECTIONS
+            {
+                let _ = stream.write_all(
+                    b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\nServer Busy",
+                );
                 continue;
             }
             let drive = drive_path.clone();
@@ -1513,7 +1517,9 @@ fn handle_client(mut stream: TcpStream, drive_path: &str) -> Result<()> {
         return Ok(());
     }
 
-    if method_str == "GET" && (path_str == "/" || path_str == "/index.html" || path_str == "/dashboard") {
+    if method_str == "GET"
+        && (path_str == "/" || path_str == "/index.html" || path_str == "/dashboard")
+    {
         send_http_response(
             &mut stream,
             "200 OK",
@@ -2560,10 +2566,16 @@ mod tests {
         let store = ApplianceStateStore::new();
         *store.api_key.lock().unwrap() = Some("secret123".to_string());
         let req_valid = b"POST /api/rip HTTP/1.1\r\nAuthorization: Bearer secret123\r\n\r\n";
-        assert!(validate_api_key_header_with_store(&store, req_valid, "/api/rip"));
+        assert!(validate_api_key_header_with_store(
+            &store, req_valid, "/api/rip"
+        ));
 
         let req_invalid = b"POST /api/rip HTTP/1.1\r\nAuthorization: Bearer wrong\r\n\r\n";
-        assert!(!validate_api_key_header_with_store(&store, req_invalid, "/api/rip"));
+        assert!(!validate_api_key_header_with_store(
+            &store,
+            req_invalid,
+            "/api/rip"
+        ));
     }
 
     #[test]
@@ -2992,7 +3004,9 @@ mod tests {
         assert!(r_dash.contains("200 OK"));
         assert!(r_dash.contains("DVD Ripper Embedded Appliance"));
 
-        let (r_ac, _) = test_handle_client_route(b"POST /api/acoustic?profile=silent&drive=D: HTTP/1.1\r\n\r\n");
+        let (r_ac, _) = test_handle_client_route(
+            b"POST /api/acoustic?profile=silent&drive=D: HTTP/1.1\r\n\r\n",
+        );
         assert!(r_ac.contains("200 OK"));
         assert!(r_ac.contains("silent"));
 

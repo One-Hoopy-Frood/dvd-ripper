@@ -162,7 +162,13 @@ pub fn resolve_tv_batch_destination_dir(
     season_number: u32,
     series_year: Option<u32>,
 ) -> PathBuf {
-    resolve_tv_batch_destination_dir_custom(output_dir, series_title, season_number, series_year, "TV")
+    resolve_tv_batch_destination_dir_custom(
+        output_dir,
+        series_title,
+        season_number,
+        series_year,
+        "TV",
+    )
 }
 
 /// Fluent builder for constructing [`RipTvBatchRequest`] instances.
@@ -382,7 +388,8 @@ impl RipTvBatchUseCase {
         let play_all_spans = if is_monolithic_play_all {
             let play_all_title = episodes_to_rip[0].title_num.max(1);
             let default_prober = crate::infrastructure::ffmpeg::FfmpegMediaProber::new("ffmpeg");
-            let prober: &dyn StreamProber = self.stream_prober.as_deref().unwrap_or(&default_prober);
+            let prober: &dyn StreamProber =
+                self.stream_prober.as_deref().unwrap_or(&default_prober);
             let details = prober.probe_stream_details(&request.source_dvd, play_all_title);
             crate::domain::heuristics::detect_tv_episodes_from_chapters(
                 play_all_title,
@@ -477,7 +484,9 @@ impl RipTvBatchUseCase {
             }
         }
 
-        if completed_count == 0 && let Some(err) = last_error {
+        if completed_count == 0
+            && let Some(err) = last_error
+        {
             return Err(err);
         }
 

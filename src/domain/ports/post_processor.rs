@@ -123,7 +123,12 @@ impl PostProcessContext {
         self
     }
 
-    pub fn with_eject_options(mut self, no_eject: bool, spindown: bool, autoclose_secs: Option<u64>) -> Self {
+    pub fn with_eject_options(
+        mut self,
+        no_eject: bool,
+        spindown: bool,
+        autoclose_secs: Option<u64>,
+    ) -> Self {
         self.no_eject = no_eject;
         self.spindown = spindown;
         self.eject_autoclose_secs = autoclose_secs;

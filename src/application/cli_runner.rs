@@ -217,10 +217,7 @@ impl<'a> CliMetadataResolver<'a> {
                     );
                 }
                 Ok(None) => {
-                    println!(
-                        "Warning: No metadata details found for '{}'.",
-                        query
-                    );
+                    println!("Warning: No metadata details found for '{}'.", query);
                 }
                 Err(e) => {
                     println!(
@@ -317,8 +314,11 @@ impl CliApplicationRunner {
         let naming_spec = crate::domain::entities::options::OutputNamingSpec::from(&args);
 
         if args.iso {
-            let absolute_output =
-                crate::domain::naming::resolve_movie_output_path(&naming_spec, title_name.as_deref(), title_year);
+            let absolute_output = crate::domain::naming::resolve_movie_output_path(
+                &naming_spec,
+                title_name.as_deref(),
+                title_year,
+            );
             println!(
                 "Archival ISO dump will be saved to: {}",
                 absolute_output.display()
@@ -419,14 +419,15 @@ impl CliApplicationRunner {
                 );
 
                 if let Some(first_ep) = episodes.first() {
-                    let sample_output = Some(crate::domain::naming::resolve_tv_episode_output_path(
-                        &naming_spec,
-                        show_name,
-                        title_year,
-                        args.season,
-                        first_ep.episode_num,
-                        None,
-                    ));
+                    let sample_output =
+                        Some(crate::domain::naming::resolve_tv_episode_output_path(
+                            &naming_spec,
+                            show_name,
+                            title_year,
+                            args.season,
+                            first_ep.episode_num,
+                            None,
+                        ));
                     last_output_file = sample_output;
                 }
             } else {
@@ -474,8 +475,11 @@ impl CliApplicationRunner {
                 last_output_file = Some(ep_output);
             }
         } else {
-            let absolute_output =
-                crate::domain::naming::resolve_movie_output_path(&naming_spec, title_name.as_deref(), title_year);
+            let absolute_output = crate::domain::naming::resolve_movie_output_path(
+                &naming_spec,
+                title_name.as_deref(),
+                title_year,
+            );
             println!(
                 "Output file will be saved to: {}",
                 absolute_output.display()

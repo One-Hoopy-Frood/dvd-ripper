@@ -243,13 +243,13 @@ impl AppContainer {
             tv_metadata_provider: Arc::new(
                 crate::infrastructure::metadata::TvmazeMetadataProvider::new(),
             ),
-            fingerprint_repo: Arc::new(
-                crate::infrastructure::metadata::DiskFingerprintCache::new(),
-            ),
+            fingerprint_repo: Arc::new(crate::infrastructure::metadata::DiskFingerprintCache::new()),
             drive_detector: Arc::new(crate::infrastructure::optical::SystemDriveDetector::new()),
             disc_inspector: Arc::new(crate::infrastructure::optical::SystemDiscInspector::new()),
             tray_controller,
-            acoustic_supervisor: Arc::new(crate::infrastructure::optical::ScsiSpeedController::new()),
+            acoustic_supervisor: Arc::new(
+                crate::infrastructure::optical::ScsiSpeedController::new(),
+            ),
             drive_benchmark: Arc::new(
                 crate::infrastructure::optical::FfmpegDriveBenchmarkService::new(ffmpeg_bin),
             ),
@@ -269,9 +269,11 @@ impl AppContainer {
             boxset_repo: Arc::new(crate::queue::FileBoxSetEpisodeTracker),
             disk_guard: Arc::new(crate::infrastructure::storage::SystemDiskSpaceGuard::new()),
             dialog_service: Arc::new(crate::infrastructure::system::NativeFileDialogService::new()),
-            rosetta_registry: Arc::new(crate::infrastructure::metadata::LocalRosettaRegistry::with_storage(
-                crate::utils::get_app_data_dir().join("rosetta_registry.json"),
-            )),
+            rosetta_registry: Arc::new(
+                crate::infrastructure::metadata::LocalRosettaRegistry::with_storage(
+                    crate::utils::get_app_data_dir().join("rosetta_registry.json"),
+                ),
+            ),
         }
     }
 
@@ -329,12 +331,10 @@ impl AppContainer {
                 trans_options.clone(),
             ),
         );
-        let native_transcoder = Arc::new(
-            crate::infrastructure::engines::NativeIfoTranscoder::new(
-                &args.ffmpeg,
-                trans_options.clone(),
-            ),
-        );
+        let native_transcoder = Arc::new(crate::infrastructure::engines::NativeIfoTranscoder::new(
+            &args.ffmpeg,
+            trans_options.clone(),
+        ));
 
         let transcoder: Arc<dyn Transcoder> = match args.engine.to_lowercase().as_str() {
             "handbrake" => Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
@@ -352,7 +352,9 @@ impl AppContainer {
                     ("ffmpeg", ffmpeg_transcoder),
                     ("native_ifo", native_transcoder),
                 ];
-                if crate::infrastructure::engines::HandBrakeTranscoder::is_available(&args.handbrake) {
+                if crate::infrastructure::engines::HandBrakeTranscoder::is_available(
+                    &args.handbrake,
+                ) {
                     engines.push((
                         "handbrake",
                         Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
@@ -369,7 +371,9 @@ impl AppContainer {
                         )),
                     ));
                 }
-                Arc::new(crate::infrastructure::engines::AutoFallbackTranscoder::new(engines))
+                Arc::new(crate::infrastructure::engines::AutoFallbackTranscoder::new(
+                    engines,
+                ))
             }
         };
 
@@ -381,13 +385,13 @@ impl AppContainer {
             tv_metadata_provider: Arc::new(
                 crate::infrastructure::metadata::TvmazeMetadataProvider::new(),
             ),
-            fingerprint_repo: Arc::new(
-                crate::infrastructure::metadata::DiskFingerprintCache::new(),
-            ),
+            fingerprint_repo: Arc::new(crate::infrastructure::metadata::DiskFingerprintCache::new()),
             drive_detector: Arc::new(crate::infrastructure::optical::SystemDriveDetector::new()),
             disc_inspector: Arc::new(crate::infrastructure::optical::SystemDiscInspector::new()),
             tray_controller,
-            acoustic_supervisor: Arc::new(crate::infrastructure::optical::ScsiSpeedController::new()),
+            acoustic_supervisor: Arc::new(
+                crate::infrastructure::optical::ScsiSpeedController::new(),
+            ),
             drive_benchmark: Arc::new(
                 crate::infrastructure::optical::FfmpegDriveBenchmarkService::new(&args.ffmpeg),
             ),
@@ -403,9 +407,11 @@ impl AppContainer {
             boxset_repo: Arc::new(crate::queue::FileBoxSetEpisodeTracker),
             disk_guard: Arc::new(crate::infrastructure::storage::SystemDiskSpaceGuard::new()),
             dialog_service: Arc::new(crate::infrastructure::system::NativeFileDialogService::new()),
-            rosetta_registry: Arc::new(crate::infrastructure::metadata::LocalRosettaRegistry::with_storage(
-                crate::utils::get_app_data_dir().join("rosetta_registry.json"),
-            )),
+            rosetta_registry: Arc::new(
+                crate::infrastructure::metadata::LocalRosettaRegistry::with_storage(
+                    crate::utils::get_app_data_dir().join("rosetta_registry.json"),
+                ),
+            ),
         }
     }
 

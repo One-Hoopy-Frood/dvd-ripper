@@ -16,4 +16,3 @@ pub use fallback::AutoFallbackTranscoder;
 pub use handbrake::HandBrakeTranscoder;
 pub use makemkv::MakeMkvTranscoder;
 pub use native_cell_extractor::NativeIfoTranscoder;
-
