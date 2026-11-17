@@ -37,7 +37,7 @@ pub use crate::domain::ports::{
     storage::{DiskSpaceGuard, HistoryRepository},
     testing::{
         FixedDiskSpaceGuard, InMemoryHistoryRepository, RecordedNotification, RecordingNotifier,
-        RecordingProgressObserver,
+        RecordingProgressObserver, VirtualOpticalDrive,
     },
     transcoder::{
         DefaultVideoCodecResolver, ProgressObserver, TranscodeJob, TranscodeOptions, Transcoder,

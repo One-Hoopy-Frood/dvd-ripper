@@ -17,7 +17,7 @@ use dvd_ripper::application::dump_iso::{DumpIsoRequest, DumpIsoUseCase};
 use dvd_ripper::application::probe_disc::ProbeDiscUseCase;
 use dvd_ripper::application::rip_tv_batch::{RipTvBatchRequest, RipTvBatchUseCase};
 use dvd_ripper::domain::entities::disc::{
-    Chapter, DiscCopyProtectionReport, DvdTitleInfo, TitleStreamDetails, TvEpisodeInfo,
+    Chapter, DvdTitleInfo, TitleStreamDetails, TvEpisodeInfo,
 };
 use dvd_ripper::domain::entities::error::DvdError;
 use dvd_ripper::domain::entities::job::RipRecord;
@@ -28,12 +28,11 @@ use dvd_ripper::domain::ports::metadata::{
     DiscFingerprintRepository, MetadataProvider, TvSeriesMetadataProvider,
 };
 use dvd_ripper::domain::ports::notification::{NotificationEvent, Notifier};
-use dvd_ripper::domain::ports::optical_drive::{
-    DriveIdentity, OpticalDrive, ProtectionInspector, TitleProber, TrayController, TrayOperator,
-};
+use dvd_ripper::domain::ports::optical_drive::TrayController;
 use dvd_ripper::domain::ports::post_processor::{PostProcessContext, PostProcessor};
 use dvd_ripper::domain::ports::queue::{BoxSetRecord, BoxSetRepository};
 use dvd_ripper::domain::ports::storage::{DiskSpaceGuard, HistoryRepository};
+use dvd_ripper::domain::ports::testing::VirtualOpticalDrive;
 use dvd_ripper::domain::ports::transcoder::{ProgressObserver, TranscodeJob, Transcoder};
 use dvd_ripper::infrastructure::optical::SystemTrayController;
 use dvd_ripper::infrastructure::post_processors::{
@@ -427,47 +426,6 @@ fn test_lsp_individual_post_processors_contract() {
 // Additional SOLID / LSP / OCP / DIP Contract Tests
 // -----------------------------------------------------------------------------
 
-struct PureMockOpticalDrive {
-    path: PathBuf,
-    titles: Vec<DvdTitleInfo>,
-    volume_label: Option<String>,
-    fingerprint: String,
-}
-
-impl DriveIdentity for PureMockOpticalDrive {
-    fn get_path(&self) -> &Path {
-        &self.path
-    }
-
-    fn read_volume_label(&self) -> Option<String> {
-        self.volume_label.clone()
-    }
-
-    fn compute_fingerprint(&self) -> String {
-        self.fingerprint.clone()
-    }
-}
-
-impl TitleProber for PureMockOpticalDrive {
-    fn probe_titles(&self) -> Vec<DvdTitleInfo> {
-        self.titles.clone()
-    }
-}
-
-impl ProtectionInspector for PureMockOpticalDrive {
-    fn inspect_protection(&self) -> DiscCopyProtectionReport {
-        DiscCopyProtectionReport::default()
-    }
-}
-
-impl TrayOperator for PureMockOpticalDrive {
-    fn eject(&self) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl OpticalDrive for PureMockOpticalDrive {}
-
 #[derive(Default)]
 struct InMemoryFingerprintRepo {
     entries: Mutex<HashMap<String, FilmMetadata>>,
@@ -578,9 +536,8 @@ impl BoxSetRepository for InMemoryBoxSetRepo {
 fn test_lsp_probe_disc_use_case_pure_mock_optical_drive() {
     // Proves ProbeDiscUseCase works purely through OpticalDrive and DiscFingerprintRepository
     // without touching the real host filesystem (fixes the previous LSP/DIP violation).
-    let drive = PureMockOpticalDrive {
-        path: PathBuf::from("MOCK:\\"),
-        titles: vec![
+    let drive = VirtualOpticalDrive::new("MOCK:\\")
+        .with_titles(vec![
             DvdTitleInfo {
                 title_num: 1,
                 duration_secs: 5400.0,
@@ -589,10 +546,9 @@ fn test_lsp_probe_disc_use_case_pure_mock_optical_drive() {
                 title_num: 2,
                 duration_secs: 120.0,
             },
-        ],
-        volume_label: Some("BLADE_RUNNER_1982".to_string()),
-        fingerprint: "deadbeef12345678".to_string(),
-    };
+        ])
+        .with_label("BLADE_RUNNER_1982")
+        .with_fingerprint("deadbeef12345678");
 
     let fp_repo = Arc::new(InMemoryFingerprintRepo::default());
     let expected_meta = FilmMetadata {

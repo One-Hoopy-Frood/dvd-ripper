@@ -3,13 +3,20 @@
 //! Designed for deterministic unit and integration testing without filesystem I/O,
 //! network sockets, or external FFmpeg subprocesses.
 
-use std::path::Path;
-use std::sync::Mutex;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{Result, anyhow};
 
+use crate::domain::entities::disc::{DiscCopyProtectionReport, DvdTitleInfo};
 use crate::domain::entities::job::RipRecord;
-use crate::domain::ports::{DiskSpaceGuard, HistoryRepository, NotificationEvent, Notifier, ProgressObserver};
+use crate::domain::ports::optical_drive::{
+    DriveIdentity, OpticalDrive, ProtectionInspector, TitleProber, TrayOperator,
+};
+use crate::domain::ports::{
+    DiskSpaceGuard, HistoryRepository, NotificationEvent, Notifier, ProgressObserver,
+};
 
 /// Thread-safe, in-memory [`HistoryRepository`] test double.
 ///
@@ -331,6 +338,104 @@ impl crate::domain::ports::JobQueueRepository for InMemoryJobQueueRepository {
     }
 }
 
+/// Fully programmable in-memory [`OpticalDrive`] test double.
+///
+/// Simulates optical discs, title listings, copy protection profiles, and tray operations
+/// without requiring physical hardware or subprocesses.
+#[derive(Debug, Clone)]
+pub struct VirtualOpticalDrive {
+    pub path: PathBuf,
+    pub titles: Vec<DvdTitleInfo>,
+    pub volume_label: Option<String>,
+    pub fingerprint: String,
+    pub protection: DiscCopyProtectionReport,
+    pub eject_count: Arc<AtomicUsize>,
+}
+
+impl Default for VirtualOpticalDrive {
+    fn default() -> Self {
+        Self::new("D:\\")
+    }
+}
+
+impl VirtualOpticalDrive {
+    /// Creates a new [`VirtualOpticalDrive`] at the specified path.
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self {
+            path: path.into(),
+            titles: Vec::new(),
+            volume_label: None,
+            fingerprint: "virt_disc_fp_001".to_string(),
+            protection: DiscCopyProtectionReport::default(),
+            eject_count: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+
+    /// Sets the simulated DVD titles.
+    pub fn with_titles(mut self, titles: Vec<DvdTitleInfo>) -> Self {
+        self.titles = titles;
+        self
+    }
+
+    /// Sets the volume label.
+    pub fn with_label(mut self, label: impl Into<String>) -> Self {
+        self.volume_label = Some(label.into());
+        self
+    }
+
+    /// Sets the disc fingerprint.
+    pub fn with_fingerprint(mut self, fp: impl Into<String>) -> Self {
+        self.fingerprint = fp.into();
+        self
+    }
+
+    /// Sets the copy protection report.
+    pub fn with_protection(mut self, report: DiscCopyProtectionReport) -> Self {
+        self.protection = report;
+        self
+    }
+
+    /// Returns the number of times `eject()` was invoked.
+    pub fn eject_count(&self) -> usize {
+        self.eject_count.load(Ordering::SeqCst)
+    }
+}
+
+impl DriveIdentity for VirtualOpticalDrive {
+    fn get_path(&self) -> &Path {
+        &self.path
+    }
+
+    fn read_volume_label(&self) -> Option<String> {
+        self.volume_label.clone()
+    }
+
+    fn compute_fingerprint(&self) -> String {
+        self.fingerprint.clone()
+    }
+}
+
+impl TitleProber for VirtualOpticalDrive {
+    fn probe_titles(&self) -> Vec<DvdTitleInfo> {
+        self.titles.clone()
+    }
+}
+
+impl ProtectionInspector for VirtualOpticalDrive {
+    fn inspect_protection(&self) -> DiscCopyProtectionReport {
+        self.protection.clone()
+    }
+}
+
+impl TrayOperator for VirtualOpticalDrive {
+    fn eject(&self) -> Result<()> {
+        self.eject_count.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
+impl OpticalDrive for VirtualOpticalDrive {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -431,6 +536,32 @@ mod tests {
         let logs = observer.logs();
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0], "Processing sector 1234...");
+    }
+
+    #[test]
+    fn test_virtual_optical_drive_simulation() {
+        let drive = VirtualOpticalDrive::new("D:\\")
+            .with_label("INCEPTION")
+            .with_fingerprint("fp_inception_999")
+            .with_titles(vec![
+                DvdTitleInfo {
+                    title_num: 1,
+                    duration_secs: 8880.0,
+                },
+                DvdTitleInfo {
+                    title_num: 2,
+                    duration_secs: 300.0,
+                },
+            ]);
+
+        assert_eq!(drive.get_path(), Path::new("D:\\"));
+        assert_eq!(drive.read_volume_label(), Some("INCEPTION".to_string()));
+        assert_eq!(drive.compute_fingerprint(), "fp_inception_999");
+        assert_eq!(drive.probe_titles().len(), 2);
+        assert_eq!(drive.eject_count(), 0);
+
+        drive.eject().unwrap();
+        assert_eq!(drive.eject_count(), 1);
     }
 }
 
