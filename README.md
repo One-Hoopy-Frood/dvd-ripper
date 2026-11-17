@@ -319,38 +319,44 @@ For detailed guides and technical specifications, refer to:
 
 ```
 src/
-├── main.rs         - Composition Root (AppContainer) & CLI orchestration
+├── lib.rs          - Library Root, Cargo feature flags, Clean Architecture modules, & Prelude
+├── main.rs         - CLI composition root, CLI flag dispatch, & AppInitializer
 ├── cli.rs          - Command-line argument schema & segregated configuration traits
 ├── config.rs       - TOML configuration parser & runtime default merging
+├── prelude.rs      - Public library prelude for external crate consumers
 ├── gui/            - Modular Desktop GUI (eframe/egui) with tabs, dialogs, & controller
 ├── api.rs          - Embedded HTTP REST API, SSE streaming, WS, & OpenAPI spec
 ├── daemon.rs       - Multi-drive watcher daemon loop & auto-rip coordination
 │
 ├── domain/         - Pure domain layer (zero external I/O or system libraries)
-│   ├── entities/   - Core domain models (DvdDisc, DvdTitleInfo, FilmMetadata, RipRecord)
+│   ├── entities/   - Domain models (DvdSource, DvdTitleInfo, FilmMetadata, RipRecord, JobItem)
 │   ├── heuristics/ - Business rules (PAL 25fps speedup, cluster ranking, TV detection)
-│   └── ports/      - Abstract interfaces (Transcoder, DriveDetector, HistoryRepository)
+│   ├── naming.rs   - Plex/Jellyfin naming taxonomy, sibling folder resolution math
+│   └── ports/      - Abstract interfaces (Transcoder, DriveDetector, HistoryRepository, Mocks)
 │
 ├── application/    - Application use cases (orchestrates domain entities & ports)
 │   ├── probe_disc.rs        - ProbeDiscUseCase
 │   ├── rip_single_title.rs  - RipSingleTitleUseCase
 │   ├── rip_tv_batch.rs      - RipTvBatchUseCase
+│   ├── dump_iso.rs          - DumpIsoUseCase
+│   ├── dual_output_rip.rs   - DualOutputRipUseCase (StreamTee)
 │   └── drive_pool.rs        - DrivePool concurrent drive manager
 │
 ├── infrastructure/ - Concrete infrastructure adapters (implements domain ports)
-│   ├── ffmpeg/     - Builder, process runner, & progress parser
-│   ├── optical/    - Win32 & Linux ISO-9660 drive readers & tray ejectors
+│   ├── ffmpeg/     - Builder, process runner (ChildGuard), & zero-allocation progress parser
+│   ├── optical/    - Fast-path binary IFO parser, Win32/Linux disc analysis, SCSI controller
+│   ├── engines/    - MakeMKV robot mode, HandBrakeCLI, Native IFO, & AutoFallback cascade
 │   ├── metadata/   - OMDb / TMDb HTTP clients & local fingerprint cache
-│   ├── storage/    - Disk space guard & JSON history persistence
+│   ├── storage/    - Disk space guard, atomic file writers, & JSON history persistence
 │   ├── notifications/ - MQTT 3.1.1 packet generator & HTTP webhook alerts
 │   ├── post_processors/ - Media server, NFO, checksum, & tray post-processors
 │   └── ocr/        - Tesseract OCR runner for SubRip sidecar generation
 │
-├── ffmpeg.rs       - Output path resolution, formatters, & backward compatibility facades
-├── dvd.rs          - Optical sector benchmarking & copy protection inspection
-├── queue.rs        - Job queue & TV BoxSet manager (boxsets.json)
-├── history.rs      - History database serialization
-├── utils.rs        - String formatting, disk space guard checks, & media server hooks
+├── ffmpeg.rs       - (Deprecated facade) re-exports to domain::naming and infrastructure
+├── dvd.rs          - (Deprecated facade) re-exports to infrastructure::optical::disc_analysis
+├── queue.rs        - (Deprecated facade) re-exports to domain::entities::job
+├── history.rs      - (Deprecated facade) re-exports to infrastructure::storage
+├── utils.rs        - String formatters, timing utils, & legacy helpers
 └── bin/
     └── installer.rs - Portable multi-OS installer binary (dvd-ripper-installer)
 ```
@@ -361,6 +367,10 @@ src/
 
 Detailed user guides and technical architecture documents are available in the [`docs/`](docs) directory:
 
+- 📦 **[Rust Library Crate Developer Guide](docs/LIBRARY_GUIDE.md)**: Using `dvd-ripper` as an external crate dependency, Cargo features, `AppContainer` builders, programmatic use cases, and `VirtualOpticalDrive` test doubles.
+- 🤖 **[MakeMKV Robot-Mode Integration Guide](docs/MAKEMKV_INTEGRATION_GUIDE.md)**: Deep technical dive into `makemkvcon -r`, pipe streaming, zero-deadlock architecture, real-time message parsing (`PRGV`), and TV batch ripping.
+- 🎨 **[UI Usability Heuristics Specification](docs/UI_USABILITY_HEURISTICS.md)**: Comprehensive mapping of Jakob Nielsen’s 10 Usability Heuristics to the desktop GUI and embedded Web Dashboard.
+- ⚡ **[Zero-Allocation Stream Parsing & Performance](docs/ZERO_ALLOCATION_STREAM_PARSING.md)**: In-place byte slice window scanning (`&[u8]`), memory allocation benchmarks, and sub-10ms binary IFO probing.
 - 🔇 **[Optical Drive Acoustic & Thermal Supervisor Guide](docs/ACOUSTIC_AND_THERMAL_MANAGEMENT.md)**: SCSI drive speed throttling (Silent 4x, Balanced 8x, Turbo 16x), laser thermal rest intervals, and optical wear mitigation.
 - 🔀 **[Single-Pass Dual-Output Engine Guide](docs/DUAL_OUTPUT_STREAM_TEE.md)**: Concurrent StreamTee architecture simultaneously producing bit-exact archival remuxes and streaming transcode targets.
 - 🎞️ **[Cadence-Aware 3:2 Pulldown IVTC Guide](docs/TELECINE_AND_IVTC_CADENCE.md)**: MPEG-2 RFF/TFF flags, comb detection, and lossless inverse telecine field matching.
@@ -383,7 +393,7 @@ Detailed user guides and technical architecture documents are available in the [
 - 🖴 **[Multi-Drive Pool Guide](docs/MULTI_DRIVE_POOL.md)**: Multi-drive concurrent optical pooling, hardware topologies, and queue coordination.
 - 📊 **[Prometheus & Health Monitoring](docs/PROMETHEUS_AND_MONITORING.md)**: Prometheus metric dictionary (`/metrics`), scraping config, Grafana dashboards, & health probes.
 - 🔤 **[Subtitle Extraction & OCR Guide](docs/OCR_SUBTITLES.md)**: On-the-fly Tesseract OCR transcription from DVD bitmap overlays to universal `.srt` text sidecars.
-- 🧪 **[Testing & Code Coverage Guide](docs/TESTING_AND_COVERAGE.md)**: 409-test suite architecture, LLVM source code coverage, and mock isolation patterns.
+- 🧪 **[Testing & Code Coverage Guide](docs/TESTING_AND_COVERAGE.md)**: 467-test suite architecture, LLVM source code coverage, and mock isolation patterns.
 - 📦 **[Installer & Service Guide](docs/INSTALLER_AND_SERVICE_GUIDE.md)**: `dvd-ripper-installer` CLI, systemd service setup, and udev rules.
 - 📜 **[Ripping History & Logging](docs/RIPPING_HISTORY_AND_LOGGING.md)**: JSON backup database schema, audit trails, and history management.
 - 📺 **[TV Series Box Set Guide](docs/TV_BOXSET_GUIDE.md)**: Multi-disc TV show season auto-stitching and cumulative episode tracking.
@@ -400,11 +410,11 @@ Detailed user guides and technical architecture documents are available in the [
 
 ## 🧪 Testing
 
-Run the full test suite (**409 unit and integration contract tests + 20 doc-tests**):
+Run the full test suite (**467 automated tests: 421 unit tests, 4 installer binary tests, 9 CLI integration tests, 13 LSP architecture contract tests, and 20 doc-tests**):
 ```bash
 cargo test
 ```
-All unit tests use RAII temporary directory guards and in-memory mock adapters to ensure test files leave zero footprint on disk. Code coverage is verified with `cargo-llvm-cov` (**83.5%+ line coverage**).
+All unit tests use RAII temporary directory guards and in-memory mock adapters (`VirtualOpticalDrive`, `InMemoryHistoryRepository`) to ensure test files leave zero footprint on disk. Code coverage is verified with `cargo-llvm-cov` (**83.5%+ line coverage**).
 
 ---
 

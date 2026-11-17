@@ -20,6 +20,11 @@ When `--api-key <KEY>` is configured via CLI or `api_key = "..."` in `dvd-ripper
 
 *Note: Public endpoints (`/`, `/index.html`, `/dashboard`, `/api/status`, `/api/openapi.json`, `/metrics`) remain accessible without an API key.*
 
+### Security & Concurrency Hardening
+- **Bounded Concurrency**: The embedded server enforces `MAX_CONCURRENT_API_CONNECTIONS = 32`. When saturated, incoming connections receive an immediate `HTTP/1.1 503 Service Unavailable` response with `Connection: close` to prevent thread and memory starvation.
+- **Slowloris Defense**: Client sockets enforce strict 10-second read and write timeouts (`Duration::from_secs(10)`), terminating idle or incomplete HTTP request streams.
+- **Constant-Time Token Comparison**: API keys are validated using constant-time string equality (`subtle::ConstantTimeEq`) to eliminate timing side-channel vulnerabilities.
+
 ---
 
 ## 2. API Endpoints

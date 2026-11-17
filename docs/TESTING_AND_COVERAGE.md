@@ -1,6 +1,6 @@
 # Testing & Code Coverage Engineering Guide - `dvd-ripper`
 
-`dvd-ripper` enforces comprehensive automated testing across domain, application, infrastructure, and presentation layers. As of **v0.4.0**, the suite contains **409 passing unit and integration contract tests + 20 doc-tests** achieving **83.5%+ line coverage** across the entire workspace with zero warnings under `-D warnings`.
+`dvd-ripper` enforces comprehensive automated testing across domain, application, infrastructure, and presentation layers. As of **v0.5.0**, the suite contains **467 passing automated tests** (421 unit tests, 4 installer binary tests, 9 CLI integration tests, 13 LSP architecture contract tests, and 20 doc-tests) achieving **83.5%+ line coverage** across the entire workspace with zero warnings under `-D warnings`.
 
 ---
 
@@ -75,6 +75,12 @@ cargo test --bin dvd-ripper-installer
 
 # CLI integration test suite
 cargo test --test cli_tests
+
+# Liskov Substitution Principle (LSP) architectural contract tests
+cargo test --test lsp_contract_tests
+
+# Run rustdoc documentation tests
+cargo test --doc
 ```
 
 ---
@@ -131,18 +137,24 @@ std::fs::write(&script_file, b"@exit 0\r\n").unwrap();
 ### 4.3 Avoiding Optical Drive Polling Delays
 Probing non-existent drives (`Z:\`) with real `ffmpeg.exe` triggers Windows optical device driver polling timeouts. When testing probe fallbacks, configure invalid binary mocks (`"nonexistent_ffmpeg"`) that fail immediately without device driver delays.
 
-### 4.4 Global State Synchronization
-Tests modifying global static variables (`API_KEY` or `CANCEL_FLAGS`) must synchronize using a local test mutex to avoid races during parallel test runs:
+### 4.4 State Isolation via ApplianceStateStore
+Previously, tests modifying global static variables required mutex synchronization (`TEST_API_LOCK`). Modern tests instantiate isolated state instances via `ApplianceStateStore::new()`, allowing 100% parallel test execution without locks or cross-test interference:
 ```rust
-static TEST_API_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
 #[test]
-fn test_api_route() {
-    let _guard = TEST_API_LOCK.lock().unwrap();
-    // execute test...
+fn test_api_route_isolated() {
+    let store = ApplianceStateStore::new();
+    *store.api_key.lock().unwrap() = Some("secret".to_string());
+    assert!(validate_api_key_header_with_store(&store, req, "/api/rip"));
 }
 ```
 
-### 4.5 Non-Destructive Hardware Independence
-Unit tests must never attempt physical tray ejection, raw optical device IO, or disk partition modification on the developer host. All hardware interactions are routed through injectable trait adapters.
+### 4.5 Non-Destructive Hardware Independence via VirtualOpticalDrive
+Unit tests must never attempt physical tray ejection, raw optical device IO, or disk partition modification on the developer host. All hardware interactions are routed through injectable trait adapters or [`VirtualOpticalDrive`](file:///c:/Users/User/.gemini/antigravity-ide/scratch/dvd-ripper/src/domain/ports/testing.rs):
+```rust
+use dvd_ripper::prelude::*;
+
+let drive = VirtualOpticalDrive::new("D:\\")
+    .with_label("ALIENS")
+    .with_titles(vec![DvdTitleInfo { title_num: 1, duration_secs: 8200.0 }]);
+```
 

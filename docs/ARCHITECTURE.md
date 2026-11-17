@@ -73,36 +73,41 @@ graph TD
 ## 3. Module Responsibilities
 
 ### 3.1 Presentation & Driving Adapters
-- **`src/main.rs`**: Application entry point, CLI flag parsing, configuration default merging, and the **`AppContainer`** Composition Root.
+- **`src/main.rs`**: CLI composition root, CLI flag dispatch, and default runtime parameter merging.
+- **`src/lib.rs`**: Core library entry point, Cargo feature flag gating (`cli`, `gui`, `core`), Clean Architecture module definitions, and pruned public surface.
+- **`src/prelude.rs`**: Convenient library prelude for external crate consumers (`use dvd_ripper::prelude::*;`).
 - **`src/cli.rs`**: Schema definitions for command-line arguments (`Args`), segregated configuration traits (`TranscodeConfig`, `AudioConfig`, `SubtitleConfig`).
-- **`src/gui.rs`**: Immediate-mode desktop GUI built with `eframe`/`egui`. Includes disc search modals, live progress gauges, output folder management (`📂 Browse...`, `↗ Open`, `↺ Reset`), and cooperative rip cancellation.
-- **`src/api.rs`**: Embedded HTTP REST API server with Bearer token authentication (`--api-key`), OpenAPI v3 JSON (`/api/openapi.json`), Server-Sent Events live progress stream (`/api/events`), Prometheus metrics (`/metrics`), and Web UI dashboard.
+- **`src/gui/`**: Immediate-mode desktop GUI built with `eframe`/`egui`. Includes disc search modals, live progress gauges, output folder management (`📂 Browse...`, `↗ Open`, `↺ Reset`), and cooperative rip cancellation.
+- **`src/api.rs`**: Embedded HTTP REST API server with connection rate-limiting (`MAX_CONCURRENT_API_CONNECTIONS = 32`), Slowloris timeouts (`10s`), Bearer token authentication (`--api-key`), OpenAPI v3 JSON (`/api/openapi.json`), Server-Sent Events live progress stream (`/api/events`), Prometheus metrics (`/metrics`), and Web UI dashboard.
 - **`src/daemon.rs`**: Headless multi-drive watcher daemon that monitors optical drives, automatically detects inserted discs, fetches metadata, and coordinates ripping pipelines.
 
 ### 3.2 Application Use Cases (`src/application/`)
 - **`probe_disc.rs`**: Coordinates optical drive inspection, volume label extraction, and title probing.
 - **`rip_single_title.rs`**: Orchestrates single movie rip pipelines, including disk space verification, output folder routing, transcoding, subtitle extraction, and history recording.
 - **`rip_tv_batch.rs`**: Orchestrates multi-episode TV series batch ripping, cumulative episode numbering, and cooperative cancellation.
+- **`dump_iso.rs`**: Bit-exact 1:1 sector-by-sector archival optical disc imaging.
+- **`dual_output_rip.rs`**: Single-pass dual output multiplexer (StreamTee) simultaneously writing lossless archival master and streaming mp4.
 - **`drive_pool.rs`**: Manages concurrent multi-drive ripping jobs and thread-safe drive status updates.
 
 ### 3.3 Domain Layer (`src/domain/`)
-- **`entities/`**: Core data models (`DvdDisc`, `DvdTitleInfo`, `FilmMetadata`, `RipRecord`, `DvdDriveInfo`).
+- **`entities/`**: Core data models (`DvdSource`, `DvdTitleInfo`, `TvEpisodeInfo`, `FilmMetadata`, `RipRecord`, `DiscInfo`, `DiscOptions`, `DriveStatusInfo`, `JobItem`, `BoxSetRecord`, `ProgressEvent`).
+- **`naming.rs`**: Pure domain Plex/Jellyfin naming taxonomy, sibling folder routing math, and filename sanitization.
 - **`heuristics/`**:
   - `speedup.rs`: PAL 25fps vs 23.976fps runtime adjustment (4% duration discrepancy resolution).
   - `cluster_detector.rs`: Title duration clustering and deterministic ranking to defeat anti-copying decoy loops (e.g. John Wick 3).
   - `tv_detector.rs`: Filter out studio intros and composite "Play All" tracks.
-- **`ports/`**: Abstract interfaces (`Transcoder`, `DriveDetector`, `DiscInspector`, `TrayController`, `MetadataProvider`, `HistoryRepository`, `DiskSpaceGuard`, `Notifier`, `FileDialogService`).
+- **`ports/`**: Abstract interfaces (`Transcoder`, `DriveDetector`, `DiscInspector`, `TrayController`, `MetadataProvider`, `HistoryRepository`, `DiskSpaceGuard`, `Notifier`, `FileDialogService`, and in-memory test doubles).
 
 ### 3.4 Infrastructure Adapters (`src/infrastructure/`)
 - **`engines/`**:
   - `native_cell_extractor.rs`: Pure Rust 2048-byte sector Program Chain (`VTS_PGCITI`) extractor with `.BUP` backup table support, dual sector/block circuit breakers, and bad sector fault recovery.
   - `handbrake.rs`: HandBrakeCLI adapter leveraging `libdvdnav` virtual machine navigation, hardware decombing, and auto-path discovery.
-  - `makemkv.rs`: MakeMKV robot-mode adapter (`makemkvcon`) with drive bus key extraction (AACS/CSS/BD+), low-level SCSI pass-through, and standard installation auto-discovery.
+  - `makemkv.rs`: MakeMKV robot-mode adapter (`makemkvcon -r --messages=-stdout --progress=-stdout`) with drive bus key extraction (AACS/CSS/BD+), zero-deadlock pipes, TV batch episode ripping, and auto-discovery.
   - `fallback.rs`: Composite priority cascade orchestrator (`AutoFallbackTranscoder`).
-- **`ffmpeg/`**: Modular FFmpeg command assembly (`builder.rs`), process management (`process_runner.rs`), and output progress parsing (`progress_parser.rs`).
-- **`optical/`**: Platform-specific optical drive readers (Windows Win32 API, Linux sysfs, ISO-9660 Sector 16 volume descriptor reader, sub-10ms binary `ifo_parser.rs`).
-- **`metadata/`**: Online metadata fetching via OMDb and TMDb APIs with persistent local fingerprint caching (`fingerprints.json`).
-- **`storage/`**: Enterprise disk space guard checks, configurable runtime diagnostic file logger (`dvd-ripper.log`), and thread-safe JSON history repository (`ripping_history.json`).
+- **`ffmpeg/`**: Modular FFmpeg command assembly (`builder.rs`), process management (`process_runner.rs` with `ChildGuard`), and zero-allocation progress parsing (`progress_parser.rs`).
+- **`optical/`**: Platform-specific optical drive readers (Windows Win32 API, Linux sysfs, ISO-9660 Sector 16 volume descriptor reader, sub-10ms binary `ifo_parser.rs`, and extracted `disc_analysis.rs`).
+- **`metadata/`**: Online metadata fetching via OMDb and TMDb APIs with persistent local fingerprint caching (`fingerprints.json`) and local Rosetta Stone Registry.
+- **`storage/`**: Enterprise disk space guard checks (`disk_guard.rs`), atomic file writers, runtime diagnostic file logger (`dvd-ripper.log`), and thread-safe JSON history repository (`ripping_history.json`).
 - **`notifications/`**: Home Assistant MQTT 3.1.1 auto-discovery telemetry and HTTP webhooks (Discord, Telegram, Ntfy, Gotify, Slack).
 - **`ocr/`**: On-the-fly Tesseract OCR execution converting bitmap `dvdsub` overlays to `.srt` SubRip text sidecars.
 
@@ -126,10 +131,11 @@ For full details, see [`docs/MEDIA_ORGANIZATION.md`](MEDIA_ORGANIZATION.md) and 
 
 ## 5. Testing & Verification
 
-The codebase contains **409 automated unit and integration contract tests** plus **20 documentation tests** achieving **>83% line coverage** across 34,000+ lines of code:
+The codebase contains **467 automated tests** (421 unit tests, 4 installer binary tests, 9 CLI tests, 13 LSP contract tests, and 20 doc-tests) achieving **>83% line coverage** across 34,000+ lines of code:
 - Pure domain heuristic validation (PAL speedup calculations, cluster ranking, duration tolerances).
 - In-memory mock tests for application use cases (`RipSingleTitleUseCase`, `RipTvBatchUseCase`, `DumpIsoUseCase`).
-- Reusable test doubles in `domain::ports::testing` (`InMemoryHistoryRepository`, `RecordingNotifier`, `FixedDiskSpaceGuard`, `RecordingProgressObserver`).
+- Reusable test doubles in `domain::ports::testing` (`VirtualOpticalDrive`, `InMemoryHistoryRepository`, `RecordingNotifier`, `FixedDiskSpaceGuard`, `RecordingProgressObserver`).
+- Liskov Substitution Principle (LSP) architectural contract tests in `tests/lsp_contract_tests.rs`.
 - Cooperative cancellation propagation and child process teardown (`ChildGuard`).
 - Transcoder engine adapters (Native IFO, HandBrake, MakeMKV, Fallback).
 - Video filter graph generation (`bwdif`, `yadif`, `hqdn3d`).

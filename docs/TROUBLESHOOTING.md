@@ -184,3 +184,35 @@ To view all FFmpeg stdout/stderr diagnostics, sector retry logs, and queue dispa
    - Windows: `%USERPROFILE%\.dvd-ripper\dvd-ripper.log`
    - Linux / macOS: `~/.dvd-ripper/dvd-ripper.log`
 3. See **[Persistent Ripping History & Logging Guide](RIPPING_HISTORY_AND_LOGGING.md)** for full logging configuration options.
+
+---
+
+## 9. MakeMKV Robot Mode & TV Episode Extraction Diagnostics
+
+### Symptom: MakeMKV progress reporting stalls or jumps abruptly
+Occurs when `makemkvcon` is executed with multiplexed stdout/stderr streams (`--progress=-same`), creating Windows pipe deadlocks.
+
+### Solutions:
+1. `dvd-ripper` now executes `makemkvcon` with dedicated stdout streams:
+   ```bash
+   makemkvcon -r --messages=-stdout --progress=-stdout mkv dev:D: 0 "C:\Media\DVD Rips"
+   ```
+2. Progress lines are parsed via zero-allocation split-iterators (`PRGV:first,second,max`), ensuring steady 0.0% to 100.0% progress display.
+3. For full details on the IPC protocol, see **[MakeMKV Integration Guide](MAKEMKV_INTEGRATION_GUIDE.md)**.
+
+### Symptom: TV episodes ripped with MakeMKV have conflicting filenames
+MakeMKV generates generic filenames (`title00.mkv`, `title_t00.mkv`). `dvd-ripper` automatically identifies newly generated files by matching file modification timestamps against job start times, removes any stale `.native_cells.tmp.vob` files, and atomically renames the output to standard Plex/Jellyfin TV naming (`<Show> - S<SS>E<EE> - <Title>.mkv`).
+
+---
+
+## 10. REST API Concurrency & Timeout Diagnostics
+
+### Symptom: REST API returns `HTTP/1.1 503 Service Unavailable`
+The embedded web server implements a connection concurrency limiter (`MAX_CONCURRENT_API_CONNECTIONS = 32`).
+
+### Solution:
+- Ensure client scripts, Home Assistant automations, or monitoring probes do not create unbounded concurrent connections without closing sockets.
+- Implement HTTP connection pooling or reuse connections with HTTP Keep-Alive.
+
+### Symptom: API requests aborted with connection reset / timeout
+To prevent Slowloris resource exhaustion attacks, client sockets enforce strict 10-second read and write timeouts. Ensure clients send request bodies without multi-second delays.

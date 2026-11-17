@@ -76,7 +76,11 @@ graph TD
 
 ### 2.4. MakeMKV Engine (`--engine makemkv`)
 - **Adapter**: `crate::infrastructure::engines::MakeMkvTranscoder`
-- **How it works**: Spawns `makemkvcon` in robot mode (`-r --progress=-same mkv dev:<drive> <title_idx> <out_dir>`) and captures real-time progress (`PRGV:current,total,max`). After extraction, it discovers the generated `.mkv` file and renames it to match the configured destination naming hierarchy.
+- **How it works**: Spawns `makemkvcon` in dedicated robot mode:
+  ```bash
+  makemkvcon -r --messages=-stdout --progress=-stdout mkv dev:<drive> <title_idx> <out_dir>
+  ```
+  Routing `--messages=-stdout --progress=-stdout` resolves Windows standard I/O buffer deadlocks. The engine parses real-time progress (`PRGV:current,total,max`) using zero-allocation split-iterators, inspects live CSS key decryption phases (`MSG:3007`, `MSG:3028`, `MSG:5014`), and automatically renames output files to standard Plex/Jellyfin naming conventions (e.g. `Game of Thrones - S02E09 - Blackwater.mkv`).
 - **Auto-Discovery**: Automatically scans standard paths on startup:
   - Windows: `C:\Program Files (x86)\MakeMKV\makemkvcon64.exe`, `C:\Program Files\MakeMKV\makemkvcon64.exe`, `makemkvcon.exe`.
   - macOS: `/Applications/MakeMKV.app/Contents/MacOS/makemkvcon`, `/opt/homebrew/bin/makemkvcon`.
@@ -85,7 +89,9 @@ graph TD
   - **Hardware Optical Decryption & Low-Level SCSI**: Directly negotiates drive bus authentication for AACS, BD+, and CSS without external wrappers. Communicates with drives via SCSI pass-through for far better scratch error recovery.
   - **Lossless Extraction**: Zero video or audio recompression; 100% original MPEG-2 and Dolby Digital / DTS bitstreams are preserved in a modern Matroska container.
   - **Decoy Title Elimination**: Automatically resolves real feature titles from complex 99-title decoy playlists.
-- **When to use**: Heavily encrypted discs, Criterion/Disney protected releases, badly scratched media, or when bit-for-bit lossless archival remuxing is desired.
+  - **Multi-Episode TV Batch Ripping**: Supports sequential multi-title extraction for TV show discs with clean timestamp discovery and stale temp file cleanup.
+- **When to use**: Heavily encrypted discs, Criterion/Disney protected releases, badly scratched media, multi-episode TV box sets, or when bit-for-bit lossless archival remuxing is desired.
+- **Detailed Guide**: See [`docs/MAKEMKV_INTEGRATION_GUIDE.md`](MAKEMKV_INTEGRATION_GUIDE.md) for complete IPC protocol specifications and troubleshooting.
 
 ### 2.5. Auto-Fallback Engine (`--engine auto`) [Default]
 - **Adapter**: `crate::infrastructure::engines::AutoFallbackTranscoder`
