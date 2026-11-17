@@ -144,7 +144,7 @@ pub fn resolve_tv_batch_destination_dir_custom(
         }
     }
 
-    let tv_root = crate::ffmpeg::resolve_tv_root_custom(trimmed_str, tv_dir);
+    let tv_root = crate::domain::naming::resolve_tv_root_custom(trimmed_str, tv_dir);
     tv_root.join(show_folder).join(season_folder)
 }
 

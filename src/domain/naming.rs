@@ -189,6 +189,45 @@ pub fn resolve_movie_output_path(
     films_root.join(&stem).join(format!("{}.{}", stem, ext))
 }
 
+/// Resolves a TV episode output path purely from [`OutputNamingSpec`], show name, optional release year, season, episode, and optional episode title.
+/// Follows Plex/Jellyfin convention: `<tv_root>/<Show Name (Year)>/Season <XX>/<Show Name> - S<XX>E<YY> - <Episode Title>.<ext>`
+pub fn resolve_tv_episode_output_path(
+    spec: &OutputNamingSpec,
+    show_name: &str,
+    year: Option<u32>,
+    season: u32,
+    episode: u32,
+    ep_title: Option<&str>,
+) -> PathBuf {
+    if let Some(ref explicit) = spec.explicit_output
+        && !explicit.trim().is_empty()
+    {
+        return PathBuf::from(explicit.trim());
+    }
+    let ext = resolve_container_extension(spec);
+    let tv_dir = if spec.tv_dir.trim().is_empty() {
+        "TV"
+    } else {
+        &spec.tv_dir
+    };
+    let films_dir = if spec.films_dir.trim().is_empty() {
+        "Films"
+    } else {
+        &spec.films_dir
+    };
+    let tv_root = resolve_tv_root_with_films(&spec.out_dir, tv_dir, films_dir);
+    let show_stem = format_media_stem(Some(show_name), year, "TV_Show");
+    let season_folder = format!("Season {:02}", season);
+    let ep_clean_name = match ep_title {
+        Some(t) if !t.trim().is_empty() => format!(
+            "{} - S{:02}E{:02} - {}.{}",
+            show_name, season, episode, crate::utils::sanitize_filename(t.trim()), ext
+        ),
+        _ => format!("{} - S{:02}E{:02}.{}", show_name, season, episode, ext),
+    };
+    tv_root.join(show_stem).join(season_folder).join(ep_clean_name)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,5 +302,31 @@ mod tests {
             resolve_tv_root_with_films(&movies.to_string_lossy(), "Series", "Movies"),
             series
         );
+    }
+
+    #[test]
+    fn test_domain_naming_tv_episode_output_path() {
+        let spec = OutputNamingSpec {
+            out_dir: "C:\\Videos".to_string(),
+            films_dir: "Films".to_string(),
+            tv_dir: "TV".to_string(),
+            explicit_output: None,
+            mkv: false,
+            iso: false,
+            no_overwrite: false,
+        };
+        let p = resolve_tv_episode_output_path(
+            &spec,
+            "Breaking Bad",
+            Some(2008),
+            1,
+            1,
+            Some("Pilot"),
+        );
+        let path_str = p.to_string_lossy();
+        assert!(path_str.contains("TV"));
+        assert!(path_str.contains("Breaking Bad (2008)"));
+        assert!(path_str.contains("Season 01"));
+        assert!(path_str.ends_with("Breaking Bad - S01E01 - Pilot.mp4"));
     }
 }

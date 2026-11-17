@@ -1214,10 +1214,10 @@ impl DvdRipperApp {
             "Movie"
         };
         let cancelled_path = if self.is_tv_mode {
-            let tv_root = crate::ffmpeg::resolve_tv_root_custom(&self.out_dir, &self.tv_dir);
+            let tv_root = crate::domain::naming::resolve_tv_root_custom(&self.out_dir, &self.tv_dir);
             tv_root.to_string_lossy().to_string()
         } else {
-            let films_root = crate::ffmpeg::resolve_films_root_custom(&self.out_dir, &self.films_dir);
+            let films_root = crate::domain::naming::resolve_films_root_custom(&self.out_dir, &self.films_dir);
             if let Some(film_name) = self.film_name_opt() {
                 let year = self.film_year.trim().parse::<u32>().ok();
                 let stem = crate::domain::naming::format_media_stem(Some(&film_name), year, "DVD_Rip");

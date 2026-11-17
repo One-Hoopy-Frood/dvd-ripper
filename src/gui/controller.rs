@@ -817,9 +817,9 @@ impl GuiApplicationController {
                 let _ = tx.send(ProgressEvent::Success(saved_path));
             } else {
                 let fallback = if spec.is_tv {
-                    crate::ffmpeg::resolve_tv_root_custom(&spec.out_dir, &spec.tv_dir)
+                    crate::domain::naming::resolve_tv_root_custom(&spec.out_dir, &spec.tv_dir)
                 } else {
-                    crate::ffmpeg::resolve_films_root_custom(&spec.out_dir, &spec.films_dir)
+                    crate::domain::naming::resolve_films_root_custom(&spec.out_dir, &spec.films_dir)
                 };
                 let _ = tx.send(ProgressEvent::Success(fallback));
             }

@@ -314,9 +314,11 @@ impl CliApplicationRunner {
         )?;
         args.out_dir = resolved_out_dir.to_string_lossy().to_string();
 
+        let naming_spec = crate::domain::entities::options::OutputNamingSpec::from(&args);
+
         if args.iso {
             let absolute_output =
-                crate::ffmpeg::resolve_output_path(&args, title_name.as_deref(), title_year)?;
+                crate::domain::naming::resolve_movie_output_path(&naming_spec, title_name.as_deref(), title_year);
             println!(
                 "Archival ISO dump will be saved to: {}",
                 absolute_output.display()
@@ -363,9 +365,9 @@ impl CliApplicationRunner {
                     args.season, args.season, args.start_episode
                 );
 
-                let episodes = crate::ffmpeg::detect_tv_episodes(
-                    &args.ffmpeg,
-                    &dvd_path,
+                let all_titles = self.container.stream_prober.probe_titles(&dvd_path);
+                let episodes = crate::domain::heuristics::detect_tv_episodes_from_titles(
+                    &all_titles,
                     show_name,
                     args.season,
                     args.start_episode,
@@ -417,15 +419,14 @@ impl CliApplicationRunner {
                 );
 
                 if let Some(first_ep) = episodes.first() {
-                    let sample_output = crate::ffmpeg::resolve_tv_output_path_with_title(
-                        &args,
-                        Some(show_name),
+                    let sample_output = Some(crate::domain::naming::resolve_tv_episode_output_path(
+                        &naming_spec,
+                        show_name,
                         title_year,
                         args.season,
                         first_ep.episode_num,
                         None,
-                    )
-                    .ok();
+                    ));
                     last_output_file = sample_output;
                 }
             } else {
@@ -440,14 +441,14 @@ impl CliApplicationRunner {
                     .find_episode_title(show_name, args.season, ep_num)
                     .ok()
                     .flatten();
-                let ep_output = crate::ffmpeg::resolve_tv_output_path_with_title(
-                    &args,
-                    Some(show_name),
+                let ep_output = crate::domain::naming::resolve_tv_episode_output_path(
+                    &naming_spec,
+                    show_name,
                     title_year,
                     args.season,
                     ep_num,
                     ep_title.as_deref(),
-                )?;
+                );
                 println!("Output file will be saved to: {}", ep_output.display());
 
                 let ep_name = crate::utils::format_episode_name_with_title(
@@ -474,7 +475,7 @@ impl CliApplicationRunner {
             }
         } else {
             let absolute_output =
-                crate::ffmpeg::resolve_output_path(&args, title_name.as_deref(), title_year)?;
+                crate::domain::naming::resolve_movie_output_path(&naming_spec, title_name.as_deref(), title_year);
             println!(
                 "Output file will be saved to: {}",
                 absolute_output.display()
