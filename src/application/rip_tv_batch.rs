@@ -396,6 +396,8 @@ impl RipTvBatchUseCase {
             Vec::new()
         };
 
+        let mut last_error: Option<anyhow::Error> = None;
+
         for (idx, ep) in episodes_to_rip.into_iter().enumerate() {
             if let Some(ref flag) = cancel_flag
                 && flag.load(Ordering::SeqCst)
@@ -408,7 +410,10 @@ impl RipTvBatchUseCase {
 
             // Allow optical drive handles and laser seek state from the previous episode to settle
             if idx > 0 && request.source_dvd.exists() {
-                std::thread::sleep(std::time::Duration::from_millis(500));
+                if let Some(obs) = observer {
+                    obs.on_log("[TV Batch] Settling optical drive and resetting hardware handles between episodes...");
+                }
+                std::thread::sleep(std::time::Duration::from_millis(2000));
             }
 
             if let Some(obs) = observer {
@@ -447,13 +452,33 @@ impl RipTvBatchUseCase {
                 .or_else(|| play_all_spans.get(idx))
                 .map(|s| (s.start_chapter, s.end_chapter));
 
-            self.single_title_use_case.execute_with_chapter_range(
+            match self.single_title_use_case.execute_with_chapter_range(
                 &single_req,
                 chapter_range,
                 observer,
                 cancel_flag.clone(),
-            )?;
-            completed_count += 1;
+            ) {
+                Ok(_) => {
+                    completed_count += 1;
+                }
+                Err(err) => {
+                    let err_str = err.to_string();
+                    if err_str.contains("cancelled by user") {
+                        return Err(err);
+                    }
+                    if let Some(obs) = observer {
+                        obs.on_log(&format!(
+                            "[TV Batch Error] Episode {} failed to rip: {}. Continuing with remaining episodes...",
+                            ep.formatted_name, err_str
+                        ));
+                    }
+                    last_error = Some(err);
+                }
+            }
+        }
+
+        if completed_count == 0 && let Some(err) = last_error {
+            return Err(err);
         }
 
         if request.track_boxset && completed_count > 0 {

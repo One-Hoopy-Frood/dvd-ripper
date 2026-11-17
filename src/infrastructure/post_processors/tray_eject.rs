@@ -129,10 +129,12 @@ mod tests {
         assert!(mock.closed.load(Ordering::SeqCst));
 
         // When tray_controller is None (direct fallback)
+        let mut ctx_fallback = ctx.clone();
+        ctx_fallback.dvd_path = PathBuf::from("Z:\\NonExistentOpticalDrive");
         let processor_none = TrayEjectPostProcessor::new(None);
-        assert!(processor_none.process(&ctx).is_ok());
+        assert!(processor_none.process(&ctx_fallback).is_ok());
 
-        let mut ctx_spindown = ctx.clone();
+        let mut ctx_spindown = ctx_fallback.clone();
         ctx_spindown.no_eject = true;
         ctx_spindown.spindown = true;
         assert!(processor_none.process(&ctx_spindown).is_ok());

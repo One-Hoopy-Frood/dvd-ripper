@@ -202,8 +202,11 @@ impl Transcoder for MakeMkvTranscoder {
         crate::utils::configure_silent_command(&mut cmd);
 
         cmd.arg("-r")
-            .arg("--progress=-same")
+            .arg("--messages=-stdout")
+            .arg("--progress=-stdout")
             .arg("mkv");
+
+        let rip_start_time = std::time::SystemTime::now();
 
         let src_str = job.source_dvd.to_string_lossy();
         let trimmed_src = src_str.trim();
@@ -246,7 +249,7 @@ impl Transcoder for MakeMkvTranscoder {
 
         cmd.stdin(Stdio::null());
         cmd.stdout(Stdio::piped());
-        cmd.stderr(Stdio::piped());
+        cmd.stderr(Stdio::null());
 
         let raw_child = cmd.spawn().with_context(|| {
             format!(
@@ -263,9 +266,13 @@ impl Transcoder for MakeMkvTranscoder {
             .ok_or_else(|| anyhow!("Failed to capture makemkvcon stdout"))?;
         let reader = BufReader::new(stdout);
 
-        let mut current_phase = "Ripping".to_string();
+        let mut current_phase = "Initializing MakeMKV...".to_string();
         let mut is_saving = false;
         let mut max_saving_pct: f64 = 0.0;
+
+        if let Some(obs) = observer {
+            obs.on_progress(0.0, "N/A", &current_phase);
+        }
 
         for line_res in reader.lines() {
             if let Some(ref flag) = cancel_flag
@@ -282,17 +289,35 @@ impl Transcoder for MakeMkvTranscoder {
                         is_saving = true;
                     }
                     current_phase = phase;
+                    if !is_saving {
+                        if let Some(obs) = observer {
+                            obs.on_progress(0.0, "N/A", &current_phase);
+                        }
+                    }
+                } else if line.starts_with("MSG:3007") {
+                    current_phase = "Scanning disc structure & decrypting CSS keys...".to_string();
+                    if let Some(obs) = observer {
+                        obs.on_progress(0.0, "N/A", &current_phase);
+                    }
+                } else if line.starts_with("MSG:3028") {
+                    current_phase = "Analyzing DVD titles...".to_string();
+                    if let Some(obs) = observer {
+                        obs.on_progress(0.0, "N/A", &current_phase);
+                    }
+                } else if line.starts_with("MSG:5014") {
+                    current_phase = "Saving title to MKV...".to_string();
+                    is_saving = true;
+                    if let Some(obs) = observer {
+                        obs.on_progress(0.0, "N/A", &current_phase);
+                    }
                 }
 
                 if let Some(pct) = Self::parse_progress_line(&line) {
-                    let reported_pct = if is_saving {
+                    if is_saving {
                         max_saving_pct = max_saving_pct.max(pct);
-                        max_saving_pct
-                    } else {
-                        pct
-                    };
-                    if let Some(obs) = observer {
-                        obs.on_progress(reported_pct, "N/A", &current_phase);
+                        if let Some(obs) = observer {
+                            obs.on_progress(max_saving_pct, "N/A", &current_phase);
+                        }
                     }
                 } else if line.starts_with("MSG:")
                     && let Some(obs) = observer
@@ -335,7 +360,11 @@ impl Transcoder for MakeMkvTranscoder {
                             .unwrap_or(false)
                         && p != &dest
                         && p != job.output_path
-                        && !existing_mkvs.contains(p)
+                        && (!existing_mkvs.contains(p)
+                            || p.metadata()
+                                .and_then(|m| m.modified())
+                                .map(|t| t >= rip_start_time)
+                                .unwrap_or(false))
                 })
                 .collect();
 
