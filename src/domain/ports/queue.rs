@@ -1,6 +1,6 @@
 //! Segregated domain ports for batch job queue persistence and multi-disc TV box-set tracking (ISP/DIP).
 
-use crate::queue::{BoxSetRecord, JobItem};
+pub use crate::domain::entities::{BoxSetRecord, JobItem};
 
 /// Interface Segregation & Dependency Inversion (ISP/DIP): Port for batch job queue persistence.
 pub trait JobQueueRepository: Send + Sync {

@@ -32,7 +32,7 @@ use dvd_ripper::domain::ports::optical_drive::{
     DriveIdentity, OpticalDrive, ProtectionInspector, TitleProber, TrayController, TrayOperator,
 };
 use dvd_ripper::domain::ports::post_processor::{PostProcessContext, PostProcessor};
-use dvd_ripper::domain::ports::queue::BoxSetRepository;
+use dvd_ripper::domain::ports::queue::{BoxSetRecord, BoxSetRepository};
 use dvd_ripper::domain::ports::storage::{DiskSpaceGuard, HistoryRepository};
 use dvd_ripper::domain::ports::transcoder::{ProgressObserver, TranscodeJob, Transcoder};
 use dvd_ripper::infrastructure::optical::SystemTrayController;
@@ -41,7 +41,6 @@ use dvd_ripper::infrastructure::post_processors::{
     TrayEjectPostProcessor,
 };
 use dvd_ripper::infrastructure::storage::{JsonHistoryRepository, SystemDiskSpaceGuard};
-use dvd_ripper::queue::BoxSetRecord;
 use std::collections::HashMap;
 
 // -----------------------------------------------------------------------------

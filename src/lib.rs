@@ -46,25 +46,75 @@
 //! ```
 
 #![allow(clippy::field_reassign_with_default)]
+#![allow(deprecated)]
 
-pub mod api;
+// Clean Architecture Core Layers
 pub mod application;
-pub mod cli;
 pub mod config;
 pub mod daemon;
 pub mod domain;
-pub mod dvd;
-pub mod ffmpeg;
+pub mod infrastructure;
+pub mod prelude;
+
+// Optional Presentation Features
+pub mod api;
+pub mod cli;
 #[cfg(feature = "gui")]
 pub mod gui;
+
+// Legacy Monolith Modules (Scheduled for complete deconstruction in v0.5.0)
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure::optical instead."
+)]
+pub mod dvd;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure::ffmpeg instead."
+)]
+pub mod ffmpeg;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure::storage instead."
+)]
 pub mod history;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure::metadata instead."
+)]
 pub mod imdb;
-pub mod infrastructure;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure::optical instead."
+)]
 pub mod iso;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure::notifications instead."
+)]
 pub mod mqtt;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure::ocr instead."
+)]
 pub mod ocr;
-pub mod prelude;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude instead."
+)]
 pub mod queue;
+
+#[deprecated(
+    since = "0.5.0",
+    note = "Legacy module scheduled for removal. Use dvd_ripper::prelude or dvd_ripper::infrastructure instead."
+)]
 pub mod utils;
 
 use std::path::PathBuf;

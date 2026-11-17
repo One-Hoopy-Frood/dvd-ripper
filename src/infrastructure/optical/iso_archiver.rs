@@ -7,6 +7,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
+pub use crate::iso::copy_sectors_with_progress;
+
 /// Production optical sector-by-sector ISO archiver with multi-pass `ddrescue` bad-sector recovery.
 #[derive(Debug, Default, Clone)]
 pub struct SystemIsoArchiver;

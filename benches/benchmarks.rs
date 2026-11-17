@@ -1,10 +1,12 @@
+#![allow(deprecated)]
+
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use dvd_ripper::domain::entities::disc::DvdTitleInfo;
 use dvd_ripper::domain::heuristics::cluster_detector::rank_best_title_from_slice;
 use dvd_ripper::domain::heuristics::tv_detector::detect_tv_episodes_from_titles;
+use dvd_ripper::infrastructure::ffmpeg::parse_ffmpeg_progress_line;
 use dvd_ripper::infrastructure::ffmpeg::progress_parser::parse_ffmpeg_progress_bytes;
-use dvd_ripper::iso::copy_sectors_with_progress;
-use dvd_ripper::utils::parse_ffmpeg_progress_line;
+use dvd_ripper::infrastructure::optical::iso_archiver::copy_sectors_with_progress;
 use std::io::Cursor;
 
 fn bench_ffmpeg_progress_parser(c: &mut Criterion) {

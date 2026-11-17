@@ -25,7 +25,7 @@ name = "dvd-ripper-installer"
 path = "src/bin/installer.rs"
 
 [features]
-default = ["cli", "gui"]
+default = ["cli"]
 core = []
 cli = []
 gui = ["dep:eframe", "dep:image", "dep:rfd"]

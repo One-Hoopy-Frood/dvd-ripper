@@ -94,3 +94,38 @@ impl RipRecord {
         }
     }
 }
+
+/// Represents a single queued ripping job item in the batch processing engine.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct JobItem {
+    pub id: String,
+    pub title: String,
+    pub media_type: String,
+    pub drive: String,
+    pub status: String,
+    pub timestamp: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spool_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_path: Option<String>,
+    #[serde(default)]
+    pub progress: f64,
+    #[serde(default)]
+    pub priority: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_number: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub season: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub episode: Option<u32>,
+}
+
+/// Represents a tracked TV series season box set state across multi-disc insertions.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BoxSetRecord {
+    pub show_name: String,
+    pub season: u32,
+    pub last_episode: u32,
+    pub total_discs_ripped: u32,
+    pub updated_at: String,
+}

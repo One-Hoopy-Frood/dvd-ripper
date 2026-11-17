@@ -89,6 +89,46 @@ impl PostProcessContext {
             spindown: args.spindown,
         }
     }
+
+    pub fn with_year(mut self, year: Option<u32>) -> Self {
+        self.year = year;
+        self
+    }
+
+    pub fn with_tv_season_episode(mut self, season: u32, episode: u32) -> Self {
+        self.season = Some(season);
+        self.episode = Some(episode);
+        self.media_type = "TV Series".to_string();
+        self
+    }
+
+    pub fn with_nfo(mut self, enabled: bool, tags: Option<String>) -> Self {
+        self.nfo_enabled = enabled;
+        self.nfo_tags = tags;
+        self
+    }
+
+    pub fn with_checksum(mut self, enabled: bool) -> Self {
+        self.checksum_enabled = enabled;
+        self
+    }
+
+    pub fn with_audit_log(mut self, path: Option<PathBuf>) -> Self {
+        self.audit_log_path = path;
+        self
+    }
+
+    pub fn with_poster_bytes(mut self, poster_bytes: Option<Vec<u8>>) -> Self {
+        self.poster_bytes = poster_bytes;
+        self
+    }
+
+    pub fn with_eject_options(mut self, no_eject: bool, spindown: bool, autoclose_secs: Option<u64>) -> Self {
+        self.no_eject = no_eject;
+        self.spindown = spindown;
+        self.eject_autoclose_secs = autoclose_secs;
+        self
+    }
 }
 
 /// Open/Closed Principle (OCP/SOLID): Pluggable post-processing action executed after rip completion.
@@ -202,5 +242,35 @@ mod tests {
         assert!(ctx.media_servers_enabled);
         assert_eq!(ctx.jellyfin_url.as_deref(), Some("http://localhost:8096"));
         assert_eq!(ctx.emby_key.as_deref(), Some("embykey"));
+    }
+
+    #[test]
+    fn test_post_process_context_fluent_builder() {
+        let ctx = PostProcessContext::new(
+            Some(PathBuf::from("S01E01.mp4")),
+            "Breaking Bad",
+            PathBuf::from("D:\\"),
+        )
+        .with_year(Some(2008))
+        .with_tv_season_episode(1, 1)
+        .with_nfo(true, Some("Drama,Crime".to_string()))
+        .with_checksum(true)
+        .with_audit_log(Some(PathBuf::from("tv_audit.log")))
+        .with_poster_bytes(Some(vec![4, 5, 6]))
+        .with_eject_options(true, true, Some(10));
+
+        assert_eq!(ctx.media_type, "TV Series");
+        assert_eq!(ctx.title, "Breaking Bad");
+        assert_eq!(ctx.year, Some(2008));
+        assert_eq!(ctx.season, Some(1));
+        assert_eq!(ctx.episode, Some(1));
+        assert!(ctx.nfo_enabled);
+        assert_eq!(ctx.nfo_tags.as_deref(), Some("Drama,Crime"));
+        assert!(ctx.checksum_enabled);
+        assert_eq!(ctx.audit_log_path, Some(PathBuf::from("tv_audit.log")));
+        assert!(ctx.no_eject);
+        assert!(ctx.spindown);
+        assert_eq!(ctx.eject_autoclose_secs, Some(10));
+        assert_eq!(ctx.poster_bytes, Some(vec![4, 5, 6]));
     }
 }

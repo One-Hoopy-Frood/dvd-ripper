@@ -9,7 +9,7 @@ pub use disc::{
     DvdTitleInfo, SubtitleStreamInfo, TitleStreamDetails, TvEpisodeInfo,
 };
 pub use error::DvdError;
-pub use job::{JobStatus, RipProgress, RipRecord};
+pub use job::{BoxSetRecord, JobItem, JobStatus, RipProgress, RipRecord};
 pub use media::{FilmMetadata, MediaType, SearchCandidate, TvEpisodeMetadata};
 pub use options::{
     AudioEncodingSpec, DiscSelectionSpec, OutputNamingSpec, SubtitleSpec, VideoEncodingSpec,
