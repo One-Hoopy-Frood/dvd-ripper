@@ -129,23 +129,17 @@ impl MakeMkvTranscoder {
         if !line.starts_with("PRGV:") {
             return None;
         }
-        let parts: Vec<&str> = line[5..].split(',').collect();
-        if parts.len() >= 3 {
-            let current = parts[0].trim().parse::<f64>().ok()?;
-            let total = parts[1].trim().parse::<f64>().ok()?;
-            let max = parts[2].trim().parse::<f64>().ok()?;
+        let mut parts = line[5..].split(',');
+        let first = parts.next()?.trim().parse::<f64>().ok()?;
+        let second = parts.next()?.trim().parse::<f64>().ok()?;
+        if let Some(third_str) = parts.next() {
+            let max = third_str.trim().parse::<f64>().ok()?;
             if max > 0.0 {
-                // When ripping a single title, `current` tracks progress of the active title
-                // while `total` tracks overall batch progress against `max`.
-                let val = if current > 0.0 { current } else { total };
+                let val = if first > 0.0 { first } else { second };
                 return Some(((val / max) * 100.0).clamp(0.0, 99.9));
             }
-        } else if parts.len() == 2 {
-            let current = parts[0].trim().parse::<f64>().ok()?;
-            let max = parts[1].trim().parse::<f64>().ok()?;
-            if max > 0.0 {
-                return Some(((current / max) * 100.0).clamp(0.0, 99.9));
-            }
+        } else if second > 0.0 {
+            return Some(((first / second) * 100.0).clamp(0.0, 99.9));
         }
         None
     }
@@ -154,14 +148,12 @@ impl MakeMkvTranscoder {
     /// `PRGC:code,id,"name"` or `PRGT:code,id,"name"` e.g. `PRGC:5014,0,"Saving 1 titles"`
     pub fn parse_operation_title(line: &str) -> Option<String> {
         if line.starts_with("PRGC:") || line.starts_with("PRGT:") {
-            if let Some(start) = line.find('"') {
-                if let Some(end) = line.rfind('"') {
-                    if end > start {
-                        let text = &line[start + 1..end];
-                        if !text.is_empty() {
-                            return Some(text.to_string());
-                        }
-                    }
+            let start = line.find('"')?;
+            let end = line.rfind('"')?;
+            if end > start {
+                let text = &line[start + 1..end];
+                if !text.is_empty() {
+                    return Some(text.to_string());
                 }
             }
         }

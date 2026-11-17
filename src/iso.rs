@@ -1,4 +1,4 @@
-use crate::ffmpeg::ProgressEvent;
+use crate::domain::entities::ProgressEvent;
 use anyhow::{Result, anyhow};
 /**
  * @file iso.rs

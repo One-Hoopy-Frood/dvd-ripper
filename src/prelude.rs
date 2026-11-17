@@ -15,7 +15,7 @@
 // Domain Entities
 pub use crate::domain::entities::{
     BoxSetRecord, Chapter, DiscCopyProtectionReport, DiscInfo, DiscOptions, DriveBenchmarkReport,
-    DriveStatusInfo, DvdError, DvdTitleInfo, FilmMetadata, JobItem, JobStatus, MediaType,
+    DriveStatusInfo, DvdError, DvdSource, DvdTitleInfo, FilmMetadata, JobItem, JobStatus, MediaType,
     ProgressEvent, RipProgress, RipRecord, SearchCandidate, TvEpisodeInfo, TvEpisodeMetadata,
 };
 

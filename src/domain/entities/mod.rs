@@ -6,7 +6,7 @@ pub mod options;
 
 pub use disc::{
     AudioStreamInfo, Chapter, DiscCopyProtectionReport, DiscInfo, DiscOptions, DriveBenchmarkReport,
-    DriveStatusInfo, DvdTitleInfo, SubtitleStreamInfo, TitleStreamDetails, TvEpisodeInfo,
+    DriveStatusInfo, DvdSource, DvdTitleInfo, SubtitleStreamInfo, TitleStreamDetails, TvEpisodeInfo,
 };
 pub use error::DvdError;
 pub use job::{BoxSetRecord, JobItem, JobStatus, ProgressEvent, RipProgress, RipRecord};

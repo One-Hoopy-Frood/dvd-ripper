@@ -233,6 +233,54 @@ pub struct DriveBenchmarkReport {
     pub rating_summary: String,
 }
 
+/// Type-safe DVD optical source abstraction supporting physical devices, drive letters, directories, and ISO files.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DvdSource {
+    /// Optical device path (e.g. `/dev/sr0`, `\\.\D:`).
+    Device(PathBuf),
+    /// Windows drive letter (e.g. `'D'`).
+    DriveLetter(char),
+    /// File system directory containing `VIDEO_TS` (e.g. `/media/disc` or `D:\VIDEO_TS`).
+    Directory(PathBuf),
+    /// Archival disc image file (e.g. `disc.iso`).
+    IsoImage(PathBuf),
+}
+
+impl DvdSource {
+    /// Parses an optical source string into a strongly-typed [`DvdSource`].
+    pub fn parse(input: &str) -> Self {
+        let trimmed = input.trim();
+        let path = std::path::Path::new(trimmed);
+        if trimmed.ends_with(".iso") || trimmed.ends_with(".ISO") {
+            Self::IsoImage(path.to_path_buf())
+        } else if (trimmed.len() <= 3 && trimmed.contains(':')) || (trimmed.len() == 1 && trimmed.chars().next().unwrap_or(' ').is_ascii_alphabetic()) {
+            let ch = trimmed.chars().next().unwrap_or('D').to_ascii_uppercase();
+            Self::DriveLetter(ch)
+        } else if trimmed.starts_with("/dev/") || trimmed.starts_with(r"\\.\") {
+            Self::Device(path.to_path_buf())
+        } else {
+            Self::Directory(path.to_path_buf())
+        }
+    }
+
+    /// Normalizes the source to a standard system path for playback or ripping engines.
+    pub fn to_normalized_path(&self) -> PathBuf {
+        match self {
+            Self::DriveLetter(c) => {
+                #[cfg(target_os = "windows")]
+                {
+                    PathBuf::from(format!(r"{}:\", c.to_ascii_uppercase()))
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    PathBuf::from(format!("/media/{}:", c.to_ascii_uppercase()))
+                }
+            }
+            Self::Device(p) | Self::Directory(p) | Self::IsoImage(p) => p.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -403,5 +451,24 @@ mod tests {
         let json = serde_json::to_string(&details).unwrap();
         let de: TitleStreamDetails = serde_json::from_str(&json).unwrap();
         assert_eq!(details, de);
+    }
+
+    #[test]
+    fn test_dvd_source_parsing_and_normalization() {
+        assert_eq!(DvdSource::parse("D:"), DvdSource::DriveLetter('D'));
+        assert_eq!(DvdSource::parse("e"), DvdSource::DriveLetter('E'));
+        assert_eq!(DvdSource::parse("D:\\"), DvdSource::DriveLetter('D'));
+        assert_eq!(
+            DvdSource::parse("/dev/sr0"),
+            DvdSource::Device(PathBuf::from("/dev/sr0"))
+        );
+        assert_eq!(
+            DvdSource::parse("C:\\Movies\\movie.iso"),
+            DvdSource::IsoImage(PathBuf::from("C:\\Movies\\movie.iso"))
+        );
+        let src = DvdSource::DriveLetter('F');
+        let normalized = src.to_normalized_path();
+        #[cfg(target_os = "windows")]
+        assert_eq!(normalized, PathBuf::from("F:\\"));
     }
 }
