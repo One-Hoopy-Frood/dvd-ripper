@@ -660,7 +660,7 @@ pub fn run_gui() -> eframe::Result<()> {
 #[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
-    use crate::ffmpeg::ProgressEvent;
+    use crate::domain::entities::ProgressEvent;
 
     #[test]
     fn test_cancel_ripping_cleans_up_progress_bar_and_stats() {

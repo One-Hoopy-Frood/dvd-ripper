@@ -38,6 +38,11 @@ impl DriveIdentity for PhysicalOpticalDrive {
 
 impl TitleProber for PhysicalOpticalDrive {
     fn probe_titles(&self) -> Vec<DvdTitleInfo> {
+        if let Some(ifo_titles) = super::ifo_parser::probe_dvd_titles_ifo(&self.drive_path) {
+            if !ifo_titles.is_empty() {
+                return ifo_titles;
+            }
+        }
         let titles = crate::ffmpeg::probe_dvd_titles(&self.ffmpeg_path, &self.drive_path, None);
         titles
             .into_iter()
@@ -66,23 +71,16 @@ impl OpticalDrive for PhysicalOpticalDrive {}
 impl DiscInspector for PhysicalOpticalDrive {
     fn read_volume_label(&self, drive_path: &Path) -> Option<String> {
         let p = drive_path.to_string_lossy();
-        crate::dvd::get_volume_label(&p)
+        super::disc_analysis::get_volume_label(&p)
     }
 
     fn compute_fingerprint(&self, drive_path: &Path) -> String {
         let p = drive_path.to_string_lossy();
-        crate::dvd::compute_disc_fingerprint(&p)
+        super::disc_analysis::compute_disc_fingerprint(&p)
     }
 
     fn inspect_protection(&self, drive_path: &Path) -> DiscCopyProtectionReport {
-        let rep = crate::dvd::inspect_disc_copy_protection(drive_path);
-        DiscCopyProtectionReport {
-            has_css_indicators: rep.has_css_indicators,
-            vob_count: rep.vob_count,
-            ifo_count: rep.ifo_count,
-            total_bytes: rep.total_bytes,
-            diagnostic_notes: rep.diagnostic_notes,
-        }
+        super::disc_analysis::inspect_disc_copy_protection(drive_path)
     }
 }
 
@@ -154,23 +152,16 @@ impl SystemDiscInspector {
 impl DiscInspector for SystemDiscInspector {
     fn read_volume_label(&self, drive_path: &Path) -> Option<String> {
         let p = drive_path.to_string_lossy();
-        crate::dvd::get_volume_label(&p)
+        super::disc_analysis::get_volume_label(&p)
     }
 
     fn compute_fingerprint(&self, drive_path: &Path) -> String {
         let p = drive_path.to_string_lossy();
-        crate::dvd::compute_disc_fingerprint(&p)
+        super::disc_analysis::compute_disc_fingerprint(&p)
     }
 
     fn inspect_protection(&self, drive_path: &Path) -> DiscCopyProtectionReport {
-        let rep = crate::dvd::inspect_disc_copy_protection(drive_path);
-        DiscCopyProtectionReport {
-            has_css_indicators: rep.has_css_indicators,
-            vob_count: rep.vob_count,
-            ifo_count: rep.ifo_count,
-            total_bytes: rep.total_bytes,
-            diagnostic_notes: rep.diagnostic_notes,
-        }
+        super::disc_analysis::inspect_disc_copy_protection(drive_path)
     }
 }
 

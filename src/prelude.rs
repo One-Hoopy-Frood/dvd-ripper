@@ -14,9 +14,9 @@
 
 // Domain Entities
 pub use crate::domain::entities::{
-    Chapter, DiscCopyProtectionReport, DiscInfo, DiscOptions, DriveStatusInfo, DvdError,
-    DvdTitleInfo, FilmMetadata, JobStatus, MediaType, RipProgress, RipRecord, SearchCandidate,
-    TvEpisodeInfo, TvEpisodeMetadata,
+    BoxSetRecord, Chapter, DiscCopyProtectionReport, DiscInfo, DiscOptions, DriveBenchmarkReport,
+    DriveStatusInfo, DvdError, DvdTitleInfo, FilmMetadata, JobItem, JobStatus, MediaType,
+    ProgressEvent, RipProgress, RipRecord, SearchCandidate, TvEpisodeInfo, TvEpisodeMetadata,
 };
 
 // Domain Ports

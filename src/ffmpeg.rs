@@ -1461,39 +1461,7 @@ pub fn parse_ranked_audio_languages(pref_str: &str) -> Vec<String> {
         .collect()
 }
 
-/// Event emitted during FFmpeg ripping process or async GUI metadata lookup.
-#[derive(Debug, Clone)]
-pub enum ProgressEvent {
-    Log(String),
-    Metadata(crate::imdb::FilmMetadata),
-    SearchResults(Vec<crate::imdb::SearchResultItem>),
-    TvEpisodesDetected(Vec<TvEpisodeInfo>),
-    TvEpisodeStarted {
-        title_num: u32,
-    },
-    TvEpisodeCompleted {
-        title_num: u32,
-        output_path: PathBuf,
-    },
-    BenchmarkFinished(crate::dvd::DriveBenchmarkReport),
-    DetectedTitle {
-        title_num: u32,
-        duration_secs: f64,
-    },
-    TitleThumbnailReady {
-        title_num: u32,
-        image_bytes: Vec<u8>,
-    },
-    TitleStreamsProbed(crate::domain::entities::disc::TitleStreamDetails),
-    PreviewClipReady(PathBuf),
-    Progress {
-        percent: f64,
-        fps: String,
-        speed: String,
-    },
-    Success(PathBuf),
-    Error(String),
-}
+pub use crate::domain::entities::job::ProgressEvent;
 
 /// Executes FFmpeg child process and parses output line-by-line to render dynamic progress bar.
 #[allow(dead_code)]

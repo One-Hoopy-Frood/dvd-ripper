@@ -221,6 +221,18 @@ impl Default for DiscOptions {
     }
 }
 
+/// Optical drive throughput diagnostic benchmark measuring read speed (MB/s) and demuxer FPS.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DriveBenchmarkReport {
+    pub drive_path: String,
+    pub test_duration_secs: u64,
+    pub read_bytes: u64,
+    pub read_speed_mbps: f64,
+    pub demux_speed_mbps: f64,
+    pub fps: String,
+    pub rating_summary: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

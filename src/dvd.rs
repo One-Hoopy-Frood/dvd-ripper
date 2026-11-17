@@ -551,17 +551,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::time::Instant;
 
-/// Benchmark report metrics for optical drive throughput performance.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DriveBenchmarkReport {
-    pub drive_path: String,
-    pub test_duration_secs: u64,
-    pub read_bytes: u64,
-    pub read_speed_mbps: f64,
-    pub demux_speed_mbps: f64,
-    pub fps: String,
-    pub rating_summary: String,
-}
+pub use crate::domain::entities::disc::DriveBenchmarkReport;
 
 /// Runs optical drive throughput diagnostic benchmark measuring read speed (MB/s) and demuxer FPS.
 pub fn run_drive_benchmark(

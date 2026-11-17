@@ -1,6 +1,6 @@
 //! Domain ports for optical drive throughput performance benchmarking.
 
-use crate::dvd::DriveBenchmarkReport;
+use crate::domain::entities::disc::DriveBenchmarkReport;
 use anyhow::Result;
 use std::path::Path;
 

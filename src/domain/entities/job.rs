@@ -1,4 +1,8 @@
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+
+use super::disc::{DriveBenchmarkReport, TitleStreamDetails, TvEpisodeInfo};
+use super::media::{FilmMetadata, SearchCandidate};
 
 /// Execution status of an optical rip job.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -128,4 +132,38 @@ pub struct BoxSetRecord {
     pub last_episode: u32,
     pub total_discs_ripped: u32,
     pub updated_at: String,
+}
+
+/// Comprehensive progress and notification event emitted during ripping and discovery operations.
+#[derive(Debug, Clone)]
+pub enum ProgressEvent {
+    Log(String),
+    Metadata(FilmMetadata),
+    SearchResults(Vec<SearchCandidate>),
+    TvEpisodesDetected(Vec<TvEpisodeInfo>),
+    TvEpisodeStarted {
+        title_num: u32,
+    },
+    TvEpisodeCompleted {
+        title_num: u32,
+        output_path: PathBuf,
+    },
+    BenchmarkFinished(DriveBenchmarkReport),
+    DetectedTitle {
+        title_num: u32,
+        duration_secs: f64,
+    },
+    TitleThumbnailReady {
+        title_num: u32,
+        image_bytes: Vec<u8>,
+    },
+    TitleStreamsProbed(TitleStreamDetails),
+    PreviewClipReady(PathBuf),
+    Progress {
+        percent: f64,
+        fps: String,
+        speed: String,
+    },
+    Success(PathBuf),
+    Error(String),
 }

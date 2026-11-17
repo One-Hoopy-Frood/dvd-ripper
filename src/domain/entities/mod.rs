@@ -5,11 +5,11 @@ pub mod media;
 pub mod options;
 
 pub use disc::{
-    AudioStreamInfo, Chapter, DiscCopyProtectionReport, DiscInfo, DiscOptions, DriveStatusInfo,
-    DvdTitleInfo, SubtitleStreamInfo, TitleStreamDetails, TvEpisodeInfo,
+    AudioStreamInfo, Chapter, DiscCopyProtectionReport, DiscInfo, DiscOptions, DriveBenchmarkReport,
+    DriveStatusInfo, DvdTitleInfo, SubtitleStreamInfo, TitleStreamDetails, TvEpisodeInfo,
 };
 pub use error::DvdError;
-pub use job::{BoxSetRecord, JobItem, JobStatus, RipProgress, RipRecord};
+pub use job::{BoxSetRecord, JobItem, JobStatus, ProgressEvent, RipProgress, RipRecord};
 pub use media::{FilmMetadata, MediaType, SearchCandidate, TvEpisodeMetadata};
 pub use options::{
     AudioEncodingSpec, DiscSelectionSpec, OutputNamingSpec, SubtitleSpec, VideoEncodingSpec,

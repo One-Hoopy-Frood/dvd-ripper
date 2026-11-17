@@ -12,7 +12,7 @@ use super::controller::{GuiApplicationController, RipTaskSpecification};
 use super::tabs::ActiveTab;
 use crate::domain::entities::disc::TvEpisodeInfo;
 use crate::dvd::{get_volume_label, normalize_dvd_path};
-use crate::ffmpeg::ProgressEvent;
+use crate::domain::entities::ProgressEvent;
 use crate::history::{RipRecord, load_history, record_rip_event};
 use crate::utils::format_episode_name;
 
