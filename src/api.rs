@@ -1015,11 +1015,23 @@ pub fn start_embedded_api_server(port: u16, drive_path: String) -> Result<()> {
         state.drive = crate::dvd::auto_detect_dvd_drive();
     }
 
+    let active_connections = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    const MAX_CONCURRENT_API_CONNECTIONS: usize = 32;
+
     thread::spawn(move || {
-        for stream in listener.incoming().flatten() {
+        for mut stream in listener.incoming().flatten() {
+            let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(10)));
+            let _ = stream.set_write_timeout(Some(std::time::Duration::from_secs(10)));
+            if active_connections.load(std::sync::atomic::Ordering::Relaxed) >= MAX_CONCURRENT_API_CONNECTIONS {
+                let _ = stream.write_all(b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\nServer Busy");
+                continue;
+            }
             let drive = drive_path.clone();
+            let conns = active_connections.clone();
+            conns.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             thread::spawn(move || {
                 let _ = handle_client(stream, &drive);
+                conns.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
             });
         }
     });
@@ -1093,8 +1105,15 @@ pub fn set_api_key(key: String) {
 }
 
 pub fn validate_api_key_header(req_bytes: &[u8], path_str: &str) -> bool {
-    let handle = get_configured_api_key_handle();
-    let lock = lock_or_recover(handle);
+    validate_api_key_header_with_store(ApplianceStateStore::global(), req_bytes, path_str)
+}
+
+pub fn validate_api_key_header_with_store(
+    store: &ApplianceStateStore,
+    req_bytes: &[u8],
+    path_str: &str,
+) -> bool {
+    let lock = lock_or_recover(&store.api_key);
     let expected_key = match lock.clone() {
         Some(k) if !k.trim().is_empty() => k,
         _ => return true,
@@ -2538,13 +2557,13 @@ mod tests {
 
     #[test]
     fn test_api_key_validation() {
-        let _lock = TEST_API_LOCK.lock().unwrap();
-        set_api_key("secret123".to_string());
+        let store = ApplianceStateStore::new();
+        *store.api_key.lock().unwrap() = Some("secret123".to_string());
         let req_valid = b"POST /api/rip HTTP/1.1\r\nAuthorization: Bearer secret123\r\n\r\n";
-        assert!(validate_api_key_header(req_valid, "/api/rip"));
+        assert!(validate_api_key_header_with_store(&store, req_valid, "/api/rip"));
 
         let req_invalid = b"POST /api/rip HTTP/1.1\r\nAuthorization: Bearer wrong\r\n\r\n";
-        assert!(!validate_api_key_header(req_invalid, "/api/rip"));
+        assert!(!validate_api_key_header_with_store(&store, req_invalid, "/api/rip"));
     }
 
     #[test]
