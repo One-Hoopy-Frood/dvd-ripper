@@ -184,27 +184,7 @@ pub fn is_year_in_range(year: Option<u32>, target_year: Option<u32>, max_delta: 
 }
 
 /// Represents a structured candidate search result item for UI popup selection.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
-pub struct SearchResultItem {
-    pub title: String,
-    pub year: Option<u32>,
-    pub imdb_id: String,
-    pub type_field: String,
-    pub poster_url: Option<String>,
-}
-
-impl SearchResultItem {
-    #[allow(dead_code)]
-    pub fn formatted_label(&self) -> String {
-        let yr = self.year.map(|y| format!(" ({})", y)).unwrap_or_default();
-        let type_desc = if !self.type_field.is_empty() {
-            format!(" [{}]", self.type_field)
-        } else {
-            String::new()
-        };
-        format!("{}{}{}", self.title, yr, type_desc)
-    }
-}
+pub type SearchResultItem = crate::domain::entities::SearchCandidate;
 
 /// Represents a search result entry from OMDb search endpoint.
 #[derive(Deserialize, Debug)]
