@@ -97,17 +97,17 @@ pub trait Transcoder: Send + Sync {
         observer: Option<&dyn ProgressObserver>,
         cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
-        if let Some((start, end)) = chapter_range {
-            if !self.capabilities().supports_chapter_ranges {
-                return Err(anyhow::anyhow!(
-                    crate::domain::entities::DvdError::UnsupportedCapability(format!(
-                        "Transcoder engine '{}' does not support chapter range extraction ({}-{})",
-                        self.capabilities().engine_name,
-                        start,
-                        end
-                    ))
-                ));
-            }
+        if let Some((start, end)) = chapter_range
+            && !self.capabilities().supports_chapter_ranges
+        {
+            return Err(anyhow::anyhow!(
+                crate::domain::entities::DvdError::UnsupportedCapability(format!(
+                    "Transcoder engine '{}' does not support chapter range extraction ({}-{})",
+                    self.capabilities().engine_name,
+                    start,
+                    end
+                ))
+            ));
         }
         self.transcode(job, observer, cancel_flag)
     }
