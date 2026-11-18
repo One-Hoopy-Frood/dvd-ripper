@@ -218,6 +218,10 @@ impl HandBrakeTranscoder {
 }
 
 impl Transcoder for HandBrakeTranscoder {
+    fn capabilities(&self) -> crate::domain::ports::EngineCapabilities {
+        crate::domain::ports::EngineCapabilities::new("handbrake", true, true, true, false)
+    }
+
     fn transcode(
         &self,
         job: &TranscodeJob,

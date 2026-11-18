@@ -35,6 +35,6 @@ pub use testing::{
     RecordingProgressObserver,
 };
 pub use transcoder::{
-    DefaultVideoCodecResolver, ProgressObserver, TranscodeJob, TranscodeOptions, Transcoder,
-    VideoCodecResolver,
+    DefaultVideoCodecResolver, EngineCapabilities, ProgressObserver, TranscodeJob,
+    TranscodeOptions, Transcoder, VideoCodecResolver,
 };

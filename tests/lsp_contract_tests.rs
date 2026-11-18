@@ -321,6 +321,68 @@ fn test_lsp_makemkv_ffmpeg_pipeline_contract() {
 }
 
 #[test]
+fn test_lsp_transcoder_capabilities_and_chapter_range_contract() {
+    use dvd_ripper::domain::ports::Transcoder;
+
+    let makemkv = dvd_ripper::infrastructure::engines::MakeMkvTranscoder::new("makemkvcon");
+    assert_eq!(makemkv.capabilities().engine_name, "makemkv");
+    assert!(!makemkv.capabilities().supports_chapter_ranges);
+    assert!(makemkv.capabilities().supports_lossless_passthrough);
+
+    let src = PathBuf::from("D:\\");
+    let dst = std::env::temp_dir().join("test_lsp_cap.mkv");
+    let job = TranscodeJob {
+        source_dvd: &src,
+        title_number: 1,
+        output_path: &dst,
+        display_title: "Chapter Range Capability Test",
+        expected_duration_secs: Some(120.0),
+    };
+
+    // Attempting chapter range extraction on an engine without chapter support must fail with UnsupportedCapability
+    let res = makemkv.transcode_chapter_range(&job, Some((1, 3)), None, None);
+    assert!(res.is_err());
+    let err_str = res.unwrap_err().to_string();
+    assert!(
+        err_str.contains("Unsupported capability")
+            || err_str.contains("does not support chapter range extraction")
+    );
+
+    // MakeMkv + Ffmpeg hybrid also does not support single title chapter extraction
+    let combo = dvd_ripper::infrastructure::engines::MakeMkvFfmpegTranscoder::new(
+        "makemkvcon",
+        "ffmpeg",
+        dvd_ripper::domain::ports::TranscodeOptions::default(),
+    );
+    assert_eq!(combo.capabilities().engine_name, "makemkv+ffmpeg");
+    assert!(!combo.capabilities().supports_chapter_ranges);
+    let combo_res = combo.transcode_chapter_range(&job, Some((2, 4)), None, None);
+    assert!(combo_res.is_err());
+    assert!(
+        combo_res
+            .unwrap_err()
+            .to_string()
+            .contains("does not support chapter range extraction")
+    );
+
+    // Engines with chapter range support declare it accurately
+    let ffmpeg = dvd_ripper::infrastructure::ffmpeg::FfmpegTranscoder::new("ffmpeg");
+    assert!(ffmpeg.capabilities().supports_chapter_ranges);
+
+    let native = dvd_ripper::infrastructure::engines::NativeIfoTranscoder::new(
+        "ffmpeg",
+        dvd_ripper::domain::ports::TranscodeOptions::default(),
+    );
+    assert!(native.capabilities().supports_chapter_ranges);
+
+    let handbrake = dvd_ripper::infrastructure::engines::HandBrakeTranscoder::new(
+        "HandBrakeCLI",
+        dvd_ripper::domain::ports::TranscodeOptions::default(),
+    );
+    assert!(handbrake.capabilities().supports_chapter_ranges);
+}
+
+#[test]
 fn test_lsp_post_processing_pipeline_composition() {
     let mock_tray = Arc::new(MockTrayController::default());
     let pipeline = PostProcessingPipeline::build_production(Some(mock_tray.clone()));

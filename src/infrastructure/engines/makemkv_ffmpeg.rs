@@ -277,6 +277,10 @@ impl MakeMkvFfmpegTranscoder {
 }
 
 impl Transcoder for MakeMkvFfmpegTranscoder {
+    fn capabilities(&self) -> crate::domain::ports::EngineCapabilities {
+        crate::domain::ports::EngineCapabilities::new("makemkv+ffmpeg", false, true, true, false)
+    }
+
     fn transcode(
         &self,
         job: &TranscodeJob,
@@ -367,16 +371,6 @@ impl Transcoder for MakeMkvFfmpegTranscoder {
 
         // `temp_res` drops here, automatically unlinking `temp_mkv`
         Ok(())
-    }
-
-    fn transcode_chapter_range(
-        &self,
-        job: &TranscodeJob,
-        _chapter_range: Option<(u32, u32)>,
-        observer: Option<&dyn ProgressObserver>,
-        cancel_flag: Option<Arc<AtomicBool>>,
-    ) -> Result<()> {
-        self.transcode(job, observer, cancel_flag)
     }
 }
 

@@ -71,6 +71,10 @@ impl FfmpegTranscoder {
 }
 
 impl Transcoder for FfmpegTranscoder {
+    fn capabilities(&self) -> crate::domain::ports::EngineCapabilities {
+        crate::domain::ports::EngineCapabilities::new("ffmpeg", true, true, true, true)
+    }
+
     fn transcode(
         &self,
         job: &TranscodeJob,

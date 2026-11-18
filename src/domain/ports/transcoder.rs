@@ -20,8 +20,53 @@ pub trait ProgressObserver: Send + Sync {
     fn on_title_complete(&self, _title_num: u32, _output_path: &Path) {}
 }
 
+/// Declares engine capabilities and supported features (LSP).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EngineCapabilities {
+    pub engine_name: &'static str,
+    pub supports_chapter_ranges: bool,
+    pub supports_live_progress: bool,
+    pub supports_hardware_accel: bool,
+    pub supports_lossless_passthrough: bool,
+}
+
+impl EngineCapabilities {
+    pub const fn new(
+        engine_name: &'static str,
+        supports_chapter_ranges: bool,
+        supports_live_progress: bool,
+        supports_hardware_accel: bool,
+        supports_lossless_passthrough: bool,
+    ) -> Self {
+        Self {
+            engine_name,
+            supports_chapter_ranges,
+            supports_live_progress,
+            supports_hardware_accel,
+            supports_lossless_passthrough,
+        }
+    }
+}
+
+impl Default for EngineCapabilities {
+    fn default() -> Self {
+        Self {
+            engine_name: "generic",
+            supports_chapter_ranges: true,
+            supports_live_progress: true,
+            supports_hardware_accel: false,
+            supports_lossless_passthrough: true,
+        }
+    }
+}
+
 /// Abstraction for media transcoding and stream copying engines.
 pub trait Transcoder: Send + Sync {
+    /// Declares the engine capabilities and supported features (LSP).
+    fn capabilities(&self) -> EngineCapabilities {
+        EngineCapabilities::default()
+    }
+
     /// Transcodes an optical disc title track according to the specified job parameters.
     ///
     /// # Parameters
@@ -42,14 +87,28 @@ pub trait Transcoder: Send + Sync {
     ) -> Result<()>;
 
     /// Transcodes a specific `(start_chapter, end_chapter)` range within a title track.
-    /// Defaults to delegating to [`Transcoder::transcode`] for mock or chapter-agnostic adapters.
+    ///
+    /// If chapter ranges are requested but not supported by the underlying engine, returns
+    /// [`crate::domain::entities::DvdError::UnsupportedCapability`] (LSP contract guarantee).
     fn transcode_chapter_range(
         &self,
         job: &TranscodeJob,
-        _chapter_range: Option<(u32, u32)>,
+        chapter_range: Option<(u32, u32)>,
         observer: Option<&dyn ProgressObserver>,
         cancel_flag: Option<Arc<AtomicBool>>,
     ) -> Result<()> {
+        if let Some((start, end)) = chapter_range {
+            if !self.capabilities().supports_chapter_ranges {
+                return Err(anyhow::anyhow!(
+                    crate::domain::entities::DvdError::UnsupportedCapability(format!(
+                        "Transcoder engine '{}' does not support chapter range extraction ({}-{})",
+                        self.capabilities().engine_name,
+                        start,
+                        end
+                    ))
+                ));
+            }
+        }
         self.transcode(job, observer, cancel_flag)
     }
 }

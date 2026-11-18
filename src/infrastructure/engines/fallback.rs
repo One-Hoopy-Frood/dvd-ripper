@@ -24,6 +24,10 @@ impl AutoFallbackTranscoder {
 }
 
 impl Transcoder for AutoFallbackTranscoder {
+    fn capabilities(&self) -> crate::domain::ports::EngineCapabilities {
+        crate::domain::ports::EngineCapabilities::new("auto", true, true, true, true)
+    }
+
     fn transcode(
         &self,
         job: &TranscodeJob,

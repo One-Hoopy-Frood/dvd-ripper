@@ -157,6 +157,10 @@ impl MakeMkvTranscoder {
 }
 
 impl Transcoder for MakeMkvTranscoder {
+    fn capabilities(&self) -> crate::domain::ports::EngineCapabilities {
+        crate::domain::ports::EngineCapabilities::new("makemkv", false, false, false, true)
+    }
+
     fn transcode(
         &self,
         job: &TranscodeJob,

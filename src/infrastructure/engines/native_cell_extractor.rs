@@ -530,6 +530,10 @@ impl NativeIfoTranscoder {
 }
 
 impl Transcoder for NativeIfoTranscoder {
+    fn capabilities(&self) -> crate::domain::ports::EngineCapabilities {
+        crate::domain::ports::EngineCapabilities::new("native", true, true, false, false)
+    }
+
     fn transcode(
         &self,
         job: &TranscodeJob,

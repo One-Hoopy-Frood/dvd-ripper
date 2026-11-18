@@ -19,6 +19,8 @@ pub enum DvdError {
     TranscodeFailed(String),
     /// Online metadata lookup failed or returned no valid candidate.
     MetadataNotFound(String),
+    /// Requested engine operation or feature is not supported by the underlying implementation (LSP).
+    UnsupportedCapability(String),
     /// Operation was cancelled by user request or cancellation token.
     Cancelled,
 }
@@ -46,6 +48,7 @@ impl fmt::Display for DvdError {
             ),
             Self::TranscodeFailed(msg) => write!(f, "Transcoding failure: {}", msg),
             Self::MetadataNotFound(query) => write!(f, "Metadata not found for query: {}", query),
+            Self::UnsupportedCapability(msg) => write!(f, "Unsupported capability: {}", msg),
             Self::Cancelled => write!(f, "Ripping process cancelled by user"),
         }
     }
