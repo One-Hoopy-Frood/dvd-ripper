@@ -47,6 +47,9 @@ pub fn render_settings_tab(
                         .selected_text(match engine.as_str() {
                             "handbrake" => "HandBrakeCLI (Optical Transcoder)",
                             "makemkv" => "MakeMKV (AACS/BD+/Lossless MKV)",
+                            "makemkv+ffmpeg" | "makemkv-ffmpeg" => {
+                                "MakeMKV + FFmpeg (Decrypt & Compress)"
+                            }
                             "native" => "Native IFO Cell Extractor (Pure Rust)",
                             "ffmpeg" => "FFmpeg (Standard)",
                             _ => "Auto (Smart Fallback: FFmpeg -> Native -> HandBrake -> MakeMKV)",
@@ -56,7 +59,12 @@ pub fn render_settings_tab(
                             ui.selectable_value(engine, "ffmpeg".to_string(), "FFmpeg (Standard)");
                             ui.selectable_value(engine, "native".to_string(), "Native IFO Cell Extractor (Pure Rust)");
                             ui.selectable_value(engine, "handbrake".to_string(), "HandBrakeCLI");
-                            ui.selectable_value(engine, "makemkv".to_string(), "MakeMKV (makemkvcon)");
+                            ui.selectable_value(engine, "makemkv".to_string(), "MakeMKV (Lossless 1:1 MKV)");
+                            ui.selectable_value(
+                                engine,
+                                "makemkv+ffmpeg".to_string(),
+                                "MakeMKV + FFmpeg (Decrypt & Compress)",
+                            );
                         });
                 });
 
@@ -70,7 +78,7 @@ pub fn render_settings_tab(
                     });
                 }
 
-                if engine == "makemkv" || engine == "auto" {
+                if engine == "makemkv" || engine == "makemkv+ffmpeg" || engine == "auto" {
                     ui.horizontal(|ui| {
                         ui.label("MakeMKV (makemkvcon) Path:");
                         ui.add(egui::TextEdit::singleline(makemkv_path).desired_width(260.0));

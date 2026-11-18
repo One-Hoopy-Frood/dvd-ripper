@@ -60,7 +60,7 @@ pub struct Args {
     #[arg(long, default_value = "veryfast")]
     pub preset: String,
 
-    /// Optical ripping engine: auto (smart fallback), ffmpeg, handbrake, makemkv, native
+    /// Optical ripping engine: auto (smart fallback), ffmpeg, handbrake, makemkv, makemkv+ffmpeg, native
     #[arg(long = "engine", default_value = "auto")]
     pub engine: String,
 

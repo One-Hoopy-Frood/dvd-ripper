@@ -61,6 +61,32 @@ impl TempResource {
         }
     }
 
+    /// Creates a new temporary resource in the specified parent directory.
+    pub fn in_directory(dir: &Path, prefix: &str, extension: &str) -> Self {
+        let pid = std::process::id();
+        let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+
+        let ext = if extension.is_empty() {
+            String::new()
+        } else if extension.starts_with('.') {
+            extension.to_string()
+        } else {
+            format!(".{}", extension)
+        };
+
+        let file_name = format!("{}_{}_{}_{}{}", prefix, pid, nanos, counter, ext);
+        let path = dir.join(file_name);
+
+        Self {
+            path,
+            persist: false,
+        }
+    }
+
     /// Returns a reference to the temporary file path.
     pub fn path(&self) -> &Path {
         &self.path
@@ -129,5 +155,10 @@ mod tests {
         let temp_dot_ext = TempResource::new("dot_ext", ".custom");
         let path = temp_dot_ext.into_path();
         assert!(path.to_string_lossy().ends_with(".custom"));
+
+        let target_dir = std::env::temp_dir();
+        let in_dir = TempResource::in_directory(&target_dir, "custom_dir", "mkv");
+        assert_eq!(in_dir.path().parent(), Some(target_dir.as_path()));
+        assert!(in_dir.path().to_string_lossy().ends_with(".mkv"));
     }
 }

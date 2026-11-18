@@ -344,6 +344,15 @@ impl AppContainer {
             "makemkv" => Arc::new(crate::infrastructure::engines::MakeMkvTranscoder::new(
                 &args.makemkv,
             )),
+            "makemkv+ffmpeg" | "makemkv-ffmpeg" | "makemkv_ffmpeg" | "makemkv-compress" => {
+                Arc::new(
+                    crate::infrastructure::engines::MakeMkvFfmpegTranscoder::new(
+                        &args.makemkv,
+                        &args.ffmpeg,
+                        trans_options,
+                    ),
+                )
+            }
             "native" => native_transcoder,
             "ffmpeg" => ffmpeg_transcoder,
             _ => {
@@ -359,17 +368,30 @@ impl AppContainer {
                         "handbrake",
                         Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
                             &args.handbrake,
-                            trans_options,
+                            trans_options.clone(),
                         )),
                     ));
                 }
                 if crate::infrastructure::engines::MakeMkvTranscoder::is_available(&args.makemkv) {
-                    engines.push((
-                        "makemkv",
-                        Arc::new(crate::infrastructure::engines::MakeMkvTranscoder::new(
-                            &args.makemkv,
-                        )),
-                    ));
+                    if trans_options.transcode {
+                        engines.push((
+                            "makemkv+ffmpeg",
+                            Arc::new(
+                                crate::infrastructure::engines::MakeMkvFfmpegTranscoder::new(
+                                    &args.makemkv,
+                                    &args.ffmpeg,
+                                    trans_options,
+                                ),
+                            ),
+                        ));
+                    } else {
+                        engines.push((
+                            "makemkv",
+                            Arc::new(crate::infrastructure::engines::MakeMkvTranscoder::new(
+                                &args.makemkv,
+                            )),
+                        ));
+                    }
                 }
                 Arc::new(crate::infrastructure::engines::AutoFallbackTranscoder::new(
                     engines,

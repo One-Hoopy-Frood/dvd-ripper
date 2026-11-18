@@ -294,6 +294,33 @@ fn test_lsp_transcoder_cooperative_cancellation_contract() {
 }
 
 #[test]
+fn test_lsp_makemkv_ffmpeg_pipeline_contract() {
+    let trans_options = dvd_ripper::domain::ports::TranscodeOptions::default();
+    let pipeline = dvd_ripper::infrastructure::engines::MakeMkvFfmpegTranscoder::new(
+        "nonexistent_makemkvcon_xyz",
+        "nonexistent_ffmpeg_xyz",
+        trans_options,
+    );
+
+    let src = PathBuf::from("D:\\");
+    let dst = std::env::temp_dir().join(format!("lsp_pipeline_{}.mp4", std::process::id()));
+    let job = TranscodeJob {
+        source_dvd: &src,
+        title_number: 1,
+        output_path: &dst,
+        display_title: "Pipeline Test Movie",
+        expected_duration_secs: Some(3600.0),
+    };
+
+    // Cooperative cancellation or binary validation test
+    let cancel_flag = Arc::new(AtomicBool::new(true));
+    let result = pipeline.transcode(&job, None, Some(cancel_flag));
+    assert!(result.is_err());
+    let err_msg = result.unwrap_err().to_string();
+    assert!(err_msg.contains("cancelled") || err_msg.contains("Failed to spawn"));
+}
+
+#[test]
 fn test_lsp_post_processing_pipeline_composition() {
     let mock_tray = Arc::new(MockTrayController::default());
     let pipeline = PostProcessingPipeline::build_production(Some(mock_tray.clone()));

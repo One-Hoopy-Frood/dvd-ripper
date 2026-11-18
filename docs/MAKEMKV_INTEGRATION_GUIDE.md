@@ -137,3 +137,23 @@ When ripping TV series discs containing multiple episodes, `dvd-ripper` coordina
 ## 6. Process Supervision with `ChildGuard`
 
 MakeMKV child processes are wrapped in `ChildGuard` RAII containers. If the user clicks `⏹ Cancel`, or if the parent thread panics, `ChildGuard::drop` immediately issues `SIGKILL` (or `TerminateProcess` on Windows), preventing orphaned background ripping processes from holding exclusive optical drive locks.
+
+---
+
+## 7. Two-Stage MakeMKV + FFmpeg Compression Pipeline (`MakeMkvFfmpegTranscoder`)
+
+For DVDs with heavy copy protections (ARccOS, RipGuard, CSS) or scratched sectors that fail with standard demuxers, raw MakeMKV produces 4–8 GB uncompressed MPEG-2 files. 
+
+`dvd-ripper` provides a two-stage hybrid pipeline adapter (`MakeMkvFfmpegTranscoder`, selectable via `--engine makemkv+ffmpeg` or in GUI Settings as **"MakeMKV + FFmpeg (Decrypt & Compress)"**):
+
+```mermaid
+flowchart LR
+    A["Encrypted Optical Disc"] -->|"Stage 1: makemkvcon"| B["Intermediate Lossless MKV"]
+    B -->|"Stage 2: ffmpeg (H.264 / HEVC / AV1)"| C["Final Compressed MP4/MKV (~1.2 GB)"]
+    B -.->|"RAII Drop Cleanup"| D["Intermediate file deleted"]
+```
+
+1. **Stage 1 (Optical Decryption & Extraction)**: MakeMKV decrypts and dumps the title track to a temporary file (`makemkv_intermediate_*.mkv`) in the target directory. Progress observer reports `[Stage 1/2: MakeMKV Rip]` scaled to 0%..50%.
+2. **Stage 2 (FFmpeg Compression Pass)**: FFmpeg takes the clean intermediate file as standard input and encodes it using the user's configured codec (H.264, HEVC, AV1), CRF quality target, hardware encoders (NVENC, QSV, VAAPI), audio downmixing, and deinterlacing. Progress observer reports `[Stage 2/2: FFmpeg Compress]` scaled to 50%..100%.
+3. **RAII Intermediate File Cleanup**: Utilizing [`TempResource`](file:///c:/Users/User/.gemini/antigravity-ide/scratch/dvd-ripper/src/infrastructure/storage/temp.rs), the multi-gigabyte intermediate MKV file is automatically deleted upon completion, error, or user cancellation.
+4. **Preserved Standalone Options**: The pure `makemkv` engine remains available for 1:1 lossless bitstream preservation.

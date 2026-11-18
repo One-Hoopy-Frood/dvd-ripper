@@ -66,7 +66,8 @@ pub use crate::application::{
 // Infrastructure Adapters (DIP)
 pub use crate::infrastructure::{
     engines::{
-        AutoFallbackTranscoder, HandBrakeTranscoder, MakeMkvTranscoder, NativeIfoTranscoder,
+        AutoFallbackTranscoder, HandBrakeTranscoder, MakeMkvFfmpegTranscoder, MakeMkvTranscoder,
+        NativeIfoTranscoder,
     },
     ffmpeg::{FfmpegMediaProber, FfmpegTranscoder},
     metadata::{OmdbMetadataProvider, TvmazeMetadataProvider},

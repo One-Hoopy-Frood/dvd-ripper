@@ -93,12 +93,20 @@ graph TD
 - **When to use**: Heavily encrypted discs, Criterion/Disney protected releases, badly scratched media, multi-episode TV box sets, or when bit-for-bit lossless archival remuxing is desired.
 - **Detailed Guide**: See [`docs/MAKEMKV_INTEGRATION_GUIDE.md`](MAKEMKV_INTEGRATION_GUIDE.md) for complete IPC protocol specifications and troubleshooting.
 
-### 2.5. Auto-Fallback Engine (`--engine auto`) [Default]
+### 2.5. MakeMKV + FFmpeg Two-Stage Compression Pipeline (`--engine makemkv+ffmpeg`)
+- **Adapter**: `crate::infrastructure::engines::MakeMkvFfmpegTranscoder`
+- **How it works**: Combines MakeMKV's robust optical decryption with FFmpeg's video compression:
+  1. *Stage 1*: MakeMKV rips the title track to a temporary intermediate file in the destination directory, handling all copy protections, CSS keys, and bad sector traps without demuxer crashes.
+  2. *Stage 2*: FFmpeg takes the clean intermediate file and compresses it to the final MP4 or MKV according to the user's selected video codec (H.264, HEVC, AV1), CRF, preset, hardware acceleration (NVENC, QSV, VAAPI), audio downmix, and subtitles.
+  3. *Cleanup*: RAII [`TempResource`] automatically deletes the multi-gigabyte intermediate file upon completion, failure, or cancellation.
+- **When to use**: Encrypted or damaged discs that require MakeMKV to extract safely, but where compact compressed files (~1–1.5 GB) are desired instead of raw 4–8 GB MPEG-2 bitstreams.
+
+### 2.6. Auto-Fallback Engine (`--engine auto`) [Default]
 - **Adapter**: `crate::infrastructure::engines::AutoFallbackTranscoder`
 - **How it works**: Orchestrates an intelligent priority cascade:
   1. Attempts primary extraction via **FFmpeg**.
   2. If FFmpeg fails with a copy protection, demuxer, or bad-sector error, automatically falls back to **Native IFO Cell Extractor**.
-  3. If Native IFO trips its consecutive damaged block circuit breaker, it advances to **MakeMKV** for low-level SCSI pass-through.
+  3. If Native IFO trips its consecutive damaged block circuit breaker, it advances to **MakeMKV** (or **MakeMKV+FFmpeg** when compression is enabled) for low-level SCSI pass-through.
   4. If MakeMKV is unavailable or fails, it calls **HandBrakeCLI**.
 - **When to use**: Recommended for all automated, headless daemon, and desktop usage. For a deep dive, see [`docs/OPTICAL_DISC_SCRATCH_AND_ERROR_RECOVERY.md`](OPTICAL_DISC_SCRATCH_AND_ERROR_RECOVERY.md).
 
