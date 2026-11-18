@@ -121,6 +121,9 @@ To rip TV show season box sets with custom episode ranges:
 ## 5. Progress Tracking, Live Logs & Cooperative Cancellation
 
 - **Real-Time Progress Bar**: Visual percentage bar (0.0% to 100.0%) updated via thread-safe crossbeam channels.
+- **Dual-Stage Hybrid Progress**: When using the **MakeMKV + FFmpeg** pipeline, the progress bar seamlessly reflects both stages:
+  - **Stage 1 (MakeMKV Rip)**: Displays `[Stage 1/2: MakeMKV Rip]` scaled to **0.0%–50.0%** while MakeMKV decrypts CSS/ARccOS keys and rips the title to an intermediate file.
+  - **Stage 2 (FFmpeg Compress)**: Displays `[Stage 2/2: FFmpeg Compress]` scaled to **50.0%–100.0%** while FFmpeg compresses the clean intermediate stream into the target container with live FPS and speed metrics.
 - **Performance Indicators**: Live FPS rendering counter and encoding speed multiplier (`2.4x`).
 - **Ring Buffer Log Console**: Live scrollable terminal log window capturing FFmpeg stdout/stderr diagnostics.
 - **Cooperative Cancellation Flow (`⏹ Cancel Ripping`)**:
@@ -193,7 +196,13 @@ The **Settings Tab** provides centralized configuration for engine preferences, 
 ```
 
 ### 7.1 Engine & Binary Path Configuration
-- **Primary Engine**: Choose the default extraction pipeline (`auto`, `ffmpeg`, `native`, `handbrake`, or `makemkv`).
+- **Primary Engine**: Choose the default extraction pipeline:
+  - **`Auto (Smart Fallback)`**: Dynamically attempts FFmpeg $\rightarrow$ Native IFO $\rightarrow$ HandBrake $\rightarrow$ MakeMKV (or MakeMKV+FFmpeg when compression is enabled).
+  - **`FFmpeg (Standard)`**: Direct optical demuxing and transcoding via FFmpeg.
+  - **`Native IFO Cell Extractor (Pure Rust)`**: Pure Rust sector extraction bypassing demuxer bugs.
+  - **`HandBrakeCLI`**: Headless HandBrake optical transcoder.
+  - **`MakeMKV (Lossless 1:1 MKV)`**: Direct untouched bitstream extraction into MKV (fast, 4–8 GB per title).
+  - **`MakeMKV + FFmpeg (Decrypt & Compress)`**: Two-stage hybrid pipeline: MakeMKV optical decryption to temporary MKV $\rightarrow$ FFmpeg compression pass to compact MP4/MKV (~1–1.5 GB).
 - **Binary Overrides & Auto-Discovery**:
   - Displays executable paths for `HandBrakeCLI` and `makemkvcon`.
   - Automatically discovers standard installation paths (e.g. `C:\Program Files (x86)\MakeMKV\makemkvcon64.exe` on Windows, `/Applications/MakeMKV.app` on macOS).

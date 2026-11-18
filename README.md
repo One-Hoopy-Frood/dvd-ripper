@@ -14,12 +14,13 @@ A fast, portable DVD backup utility written in Rust featuring both a **Portable 
 
 ## 🌟 Key Features
 
-- **Multi-Engine Ripping Suite & Auto-Fallback**: Dynamic support for 4 extraction engines (`--engine auto|ffmpeg|native|handbrake|makemkv`):
+- **Multi-Engine Ripping Suite & Auto-Fallback**: Dynamic support for 5 extraction engines (`--engine auto|ffmpeg|native|handbrake|makemkv|makemkv+ffmpeg`):
   - **FFmpeg**: Standard transcoding with hardware acceleration and audio/video filters.
   - **Native Rust IFO Extractor**: Direct 2048-byte sector Program Chain (`VTS_PGCITI`) extraction in pure Rust with `.BUP` backup recovery, completely bypassing FFmpeg demuxer bugs.
   - **HandBrakeCLI**: High-efficiency AV1/HEVC encoding and motion-adaptive decombing via `libdvdnav`.
   - **MakeMKV Robot Mode**: Lossless bit-for-bit remuxing to `.mkv` with optical drive bus key decryption (AACS, BD+, CSS).
-  - **Auto-Fallback Priority Cascade**: Intelligent automatic recovery ($\text{FFmpeg} \to \text{Native IFO} \to \text{HandBrake} \to \text{MakeMKV}$) on bad-sector or demuxer errors.
+  - **MakeMKV + FFmpeg Two-Stage Pipeline**: Two-stage decrypt-and-compress pass combining MakeMKV hardware decryption to a temporary file with FFmpeg modern video compression (H.264/HEVC/AV1) into compact output files (~1.2 GB).
+  - **Auto-Fallback Priority Cascade**: Intelligent automatic recovery ($\text{FFmpeg} \to \text{Native IFO} \to \text{HandBrake} \to \text{MakeMKV / MakeMKV+FFmpeg}$) on bad-sector or demuxer errors.
 - **Optical Drive Acoustic & Thermal Supervisor**: Active SCSI speed negotiation (`--acoustic-profile silent|balanced|turbo`) for whisper-quiet living-room ripping (4x / ~5,540 KB/s) or maximum archival throughput (16x+), backed by focus-coil thermal rest pauses (200–1000ms) on damaged sectors to prevent optical head burnout.
 - **Single-Pass Dual-Output Engine (StreamTee)**: Concurrent dual-pipe multiplexer (`--dual-output`) producing both a bit-for-bit archival master (`.mkv`/`.iso`) and a lightweight transcoded streaming file (`.mp4`) in a single read pass, cutting optical drive wear and laser exposure by 50%.
 - **Cadence-Aware 3:2 Pulldown IVTC Pipeline**: Advanced cadence detection examining MPEG-2 Repeat First Field (`RFF`), Top Field First (`TFF`), and progressive sequence flags to perform lossless inverse telecine (`--detelecine`, `fieldmatch + decimate`), restoring native 23.976p film without cadence judder.
@@ -367,6 +368,9 @@ src/
 
 Detailed user guides and technical architecture documents are available in the [`docs/`](docs) directory:
 
+- 📦 **[Cargo Feature Flags & Packaging Architecture](docs/CARGO_FEATURES_AND_PACKAGING.md)**: Crate dual-packaging (`[lib]` + `[[bin]]`), feature flags (`default = ["cli", "gui"]`), headless vs graphical builds, and Windows PE subsystem rules.
+- 🛡️ **[Domain Errors, Circuit Breakers & Fault Tolerance](docs/ERROR_HANDLING_AND_DOMAIN_ERRORS.md)**: `DvdError` taxonomy, sector-level short-circuits, consecutive damaged block bailouts, and cooperative `ChildGuard`/`TempResource` cleanup.
+- 📡 **[Telemetry, Metrics & Real-Time Event Streams](docs/TELEMETRY_AND_EVENT_STREAMS.md)**: Pub-sub architecture, `ProgressObserver`, SSE streaming (`/api/v1/events`), Prometheus metrics (`/metrics`), and media server triggers.
 - 📦 **[Rust Library Crate Developer Guide](docs/LIBRARY_GUIDE.md)**: Using `dvd-ripper` as an external crate dependency, Cargo features, `AppContainer` builders, programmatic use cases, and `VirtualOpticalDrive` test doubles.
 - 🤖 **[MakeMKV Robot-Mode Integration Guide](docs/MAKEMKV_INTEGRATION_GUIDE.md)**: Deep technical dive into `makemkvcon -r`, pipe streaming, zero-deadlock architecture, real-time message parsing (`PRGV`), and TV batch ripping.
 - 🎨 **[UI Usability Heuristics Specification](docs/UI_USABILITY_HEURISTICS.md)**: Comprehensive mapping of Jakob Nielsen’s 10 Usability Heuristics to the desktop GUI and embedded Web Dashboard.
@@ -410,7 +414,7 @@ Detailed user guides and technical architecture documents are available in the [
 
 ## 🧪 Testing
 
-Run the full test suite (**467 automated tests: 421 unit tests, 4 installer binary tests, 9 CLI integration tests, 13 LSP architecture contract tests, and 20 doc-tests**):
+Run the full test suite (**470 automated tests: 423 unit tests, 4 installer binary tests, 9 CLI integration tests, 14 LSP architecture contract tests, and 20 doc-tests**):
 ```bash
 cargo test
 ```

@@ -216,3 +216,35 @@ The embedded web server implements a connection concurrency limiter (`MAX_CONCUR
 
 ### Symptom: API requests aborted with connection reset / timeout
 To prevent Slowloris resource exhaustion attacks, client sockets enforce strict 10-second read and write timeouts. Ensure clients send request bodies without multi-second delays.
+
+---
+
+## 11. Client Desktop Window Does Not Appear on Launch
+
+### Symptom: Application process starts and exits silently without displaying a window
+On Windows, `dvd-ripper` specifies `#![windows_subsystem = "windows"]` to prevent an empty command prompt window from popping up. If the binary was compiled without the `gui` feature flag (e.g. `cargo build --no-default-features --features cli`), `main()` falls through directly to the headless CLI runner, attempts to open the default optical drive, and exits without showing a window.
+
+### Solution:
+1. **Rebuild with GUI Feature**: Ensure `default = ["cli", "gui"]` is active, or explicitly compile with GUI support:
+   ```bash
+   cargo build --release
+   ```
+2. **Verify Desktop Binary Size**: The full graphical desktop binary is ~7 MB; a headless CLI-only binary is ~3 MB.
+3. **Window Coordinate Reset**: If the window was saved at coordinates on a disconnected secondary monitor, edit `~/.dvd-ripper/config.toml` and reset `window_pos_x = 100.0` and `window_pos_y = 100.0`, or delete the window coordinate keys.
+
+---
+
+## 12. MakeMKV Rips Produce Excessively Large Output Files (4–8 GB)
+
+### Symptom: MakeMKV successfully bypasses copy protection, but the resulting `.mkv` files are massive
+Pure MakeMKV (`--engine makemkv`) performs 1:1 lossless stream copying without re-encoding, preserving the raw, uncompressed DVD MPEG-2 video bitstream (typically 4–8 GB per movie or 1.5–3 GB per 45-min TV episode).
+
+### Solution:
+Switch to the **MakeMKV + FFmpeg Two-Stage Hybrid Pipeline**:
+- **From GUI**: Open **⚙️ Settings**, change **Active Engine** to **"MakeMKV + FFmpeg (Decrypt & Compress)"**.
+- **From CLI**: Run with `--engine makemkv+ffmpeg`:
+  ```bash
+  dvd-ripper --cli D: --engine makemkv+ffmpeg --codec hevc --crf 20 --preset slow
+  ```
+- **How it Works**: Stage 1 uses MakeMKV to decrypt and extract the stream to an intermediate file; Stage 2 compresses it with FFmpeg using your chosen codec (H.264, HEVC, AV1) down to ~1–1.5 GB; Stage 3 automatically deletes the multi-gigabyte intermediate file.
+

@@ -52,7 +52,7 @@ By default, launching `dvd-ripper` without arguments opens the graphical desktop
 | `--mkv` | `false` | Force Matroska (`.mkv`) output container format instead of MP4 (`.mp4`). |
 | `--iso` | `false` | Create a 1:1 sector-by-sector archival ISO image dump directly from optical disc. |
 | `--ignore-errors` | `false` | Enable fault-tolerant demuxing to bypass surface scratches and copy-protection bad sectors. |
-| `--engine <ENGINE>` | `auto` | Transcoding/remuxing engine: `auto` (smart fallback cascade), `ffmpeg` (native demuxer), `native` (pure Rust IFO cell extractor), `handbrake` (HandBrakeCLI), or `makemkv` (MakeMKV robot mode). |
+| `--engine <ENGINE>` | `auto` | Transcoding/remuxing engine: `auto` (smart fallback cascade), `ffmpeg` (native demuxer), `native` (pure Rust IFO cell extractor), `handbrake` (HandBrakeCLI), `makemkv` (MakeMKV lossless robot mode), or `makemkv+ffmpeg` (MakeMKV decryption + FFmpeg compression pass). |
 | `--handbrake <PATH>`, `--handbrake-path <PATH>` | `HandBrakeCLI` | Custom executable path to `HandBrakeCLI` binary. |
 | `--makemkv <PATH>`, `--makemkv-path <PATH>` | `makemkvcon` | Custom executable path to `makemkvcon` binary (auto-detects standard installation paths). |
 
@@ -169,7 +169,13 @@ dvd-ripper --cli D: --engine native --search "Gladiator"
 dvd-ripper --cli D: --engine makemkv --out-dir "D:\Films"
 ```
 
-### 10. Custom Media Taxonomy (Movies & Series Subfolders)
+### 10. MakeMKV + FFmpeg Two-Stage Rip (Decryption + High-Efficiency HEVC Compression)
+```bash
+# Decrypts difficult copy protections via MakeMKV to temp, then compresses to compact HEVC/H.265 MKV (~1.2 GB)
+dvd-ripper --cli D: --engine makemkv+ffmpeg --codec hevc --crf 20 --preset slow --out-dir "D:\Films"
+```
+
+### 11. Custom Media Taxonomy (Movies & Series Subfolders)
 ```bash
 dvd-ripper --input D:\ --search "The Matrix" --out-dir "C:\Media" --films-dir "Movies" --tv-dir "Series"
 ```

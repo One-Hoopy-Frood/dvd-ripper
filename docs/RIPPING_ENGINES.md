@@ -28,16 +28,16 @@ graph TD
 
 ### Engine Feature Matrix
 
-| Feature / Capability | FFmpeg (`ffmpeg`) | Native IFO (`native`) | HandBrakeCLI (`handbrake`) | MakeMKV (`makemkv`) |
-| :--- | :---: | :---: | :---: | :---: |
-| **Primary Mechanism** | `dvdvideo` Demuxer | Direct 2048-byte Sector Extractor | `libdvdnav` Navigation | Robot Mode (`makemkvcon`) |
-| **External Binary Required** | Yes (`ffmpeg`) | **No (Pure Rust)** | Yes (`HandBrakeCLI`) | Yes (`makemkvcon`) |
-| **Lossless Remuxing** | Yes (`--codec copy`) | **Yes (Direct VOB Copy)** | No (Always encodes) | **Yes (Bit-for-bit MKV)** |
-| **Video Re-encoding** | H.264, HEVC, AV1 | Optional (via FFmpeg) | x264, x265, SVT-AV1 | No (Remux only) |
-| **Hardware Decomb Filtering**| `bwdif`, `yadif`, `w3fdif` | Passthrough | `--comb-detect --decomb` | Passthrough |
-| **Bad Sector Trap Resistance**| Moderate | **High (Sector Stepping)** | High (`libdvdnav`) | **Exceptional** |
-| **Corrupt Root IFO Recovery** | Low (`libdvdread` aborts) | **High (.BUP Auto-Fallback)** | Moderate | High |
-| **Hardware Bus Decryption** | Via `libdvdcss` | Via `libdvdcss` / OS | Via `libdvdcss` | **Native AACS/CSS/BD+ Engine** |
+| Feature / Capability | FFmpeg (`ffmpeg`) | Native IFO (`native`) | HandBrakeCLI (`handbrake`) | MakeMKV (`makemkv`) | MakeMKV+FFmpeg (`makemkv+ffmpeg`) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Primary Mechanism** | `dvdvideo` Demuxer | Direct 2048-byte Sector Extractor | `libdvdnav` Navigation | Robot Mode (`makemkvcon`) | 2-Stage: MakeMKV Decrypt $\rightarrow$ FFmpeg Compress |
+| **External Binary Required** | Yes (`ffmpeg`) | **No (Pure Rust)** | Yes (`HandBrakeCLI`) | Yes (`makemkvcon`) | Yes (`makemkvcon` + `ffmpeg`) |
+| **Lossless Remuxing** | Yes (`--codec copy`) | **Yes (Direct VOB Copy)** | No (Always encodes) | **Yes (Bit-for-bit MKV)** | Optional |
+| **Video Re-encoding** | H.264, HEVC, AV1 | Optional (via FFmpeg) | x264, x265, SVT-AV1 | No (Remux only) | **Yes (H.264, HEVC, AV1)** |
+| **Hardware Decomb Filtering**| `bwdif`, `yadif`, `w3fdif` | Passthrough | `--comb-detect --decomb` | Passthrough | `yadif`, `bwdif` via FFmpeg |
+| **Bad Sector Trap Resistance**| Moderate | **High (Sector Stepping)** | High (`libdvdnav`) | **Exceptional** | **Exceptional (MakeMKV SCSI)** |
+| **Corrupt Root IFO Recovery** | Low (`libdvdread` aborts) | **High (.BUP Auto-Fallback)** | Moderate | High | High |
+| **Hardware Bus Decryption** | Via `libdvdcss` | Via `libdvdcss` / OS | Via `libdvdcss` | **Native AACS/CSS/BD+ Engine** | **Native AACS/CSS/BD+ Engine** |
 
 ---
 

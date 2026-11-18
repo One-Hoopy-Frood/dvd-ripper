@@ -36,7 +36,7 @@ tv_dir = "TV"
 # fallback_out_dir = "E:\\BackupMedia"
 
 # --- Transcoding & Remuxing Engines ---
-# Transcoding engine selection: "auto", "ffmpeg", "native", "handbrake", or "makemkv"
+# Transcoding engine selection: "auto", "ffmpeg", "native", "handbrake", "makemkv", or "makemkv+ffmpeg"
 engine = "auto"
 # Single-pass dual output: concurrently creates archival remux (.mkv/.iso) and streaming target (.mp4)
 dual_output = false

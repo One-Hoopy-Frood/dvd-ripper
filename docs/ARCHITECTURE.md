@@ -50,7 +50,7 @@ graph TD
     end
 
     subgraph Infrastructure_Layer ["4. Infrastructure Adapters (Driven)"]
-        EnginesInfra["Transcoder Engines: Native IFO, HandBrake, MakeMKV, Fallback"]
+        EnginesInfra["Transcoder Engines: Native IFO, HandBrake, MakeMKV, MakeMKV+FFmpeg, Fallback"]
         PipelineInfra["Pipeline: StreamTee 128KB Dual-Output Multiplexer"]
         FFmpegInfra["FFmpeg Builder & Process Runner"]
         OpticalInfra["Win32 / Linux ISO-9660 Reader & SCSI Acoustic Controller"]
@@ -131,13 +131,13 @@ For full details, see [`docs/MEDIA_ORGANIZATION.md`](MEDIA_ORGANIZATION.md) and 
 
 ## 5. Testing & Verification
 
-The codebase contains **467 automated tests** (421 unit tests, 4 installer binary tests, 9 CLI tests, 13 LSP contract tests, and 20 doc-tests) achieving **>83% line coverage** across 34,000+ lines of code:
+The codebase contains **470 automated tests** (423 unit tests, 4 installer binary tests, 9 CLI tests, 14 LSP contract tests, and 20 doc-tests) achieving **>83% line coverage** across 34,000+ lines of code:
 - Pure domain heuristic validation (PAL speedup calculations, cluster ranking, duration tolerances).
 - In-memory mock tests for application use cases (`RipSingleTitleUseCase`, `RipTvBatchUseCase`, `DumpIsoUseCase`).
 - Reusable test doubles in `domain::ports::testing` (`VirtualOpticalDrive`, `InMemoryHistoryRepository`, `RecordingNotifier`, `FixedDiskSpaceGuard`, `RecordingProgressObserver`).
 - Liskov Substitution Principle (LSP) architectural contract tests in `tests/lsp_contract_tests.rs`.
 - Cooperative cancellation propagation and child process teardown (`ChildGuard`).
-- Transcoder engine adapters (Native IFO, HandBrake, MakeMKV, Fallback).
+- Transcoder engine adapters (Native IFO, HandBrake, MakeMKV, MakeMKV+FFmpeg, Fallback).
 - Video filter graph generation (`bwdif`, `yadif`, `hqdn3d`).
 - Hardware acceleration encoder selection (NVENC, VAAPI, QSV).
 - ISO-9660 disc fingerprinting and volume label parsing.
@@ -155,7 +155,10 @@ cargo test
 
 | Guide | File Path | Focus Area |
 |---|---|---|
-| **Ripping Engines** | [`docs/RIPPING_ENGINES.md`](RIPPING_ENGINES.md) | FFmpeg, Native IFO, HandBrake, MakeMKV, & Auto-Fallback |
+| **Cargo Features & Packaging** | [`docs/CARGO_FEATURES_AND_PACKAGING.md`](CARGO_FEATURES_AND_PACKAGING.md) | Dual-crate packaging (`[lib]`/`[[bin]]`), `default = ["cli", "gui"]`, & PE subsystem |
+| **Domain Errors & Fault Tolerance** | [`docs/ERROR_HANDLING_AND_DOMAIN_ERRORS.md`](ERROR_HANDLING_AND_DOMAIN_ERRORS.md) | `DvdError`, sector short-circuit, consecutive bad block bailout, & recovery |
+| **Telemetry & Event Streams** | [`docs/TELEMETRY_AND_EVENT_STREAMS.md`](TELEMETRY_AND_EVENT_STREAMS.md) | `ProgressObserver`, SSE streaming (`/api/v1/events`), Prometheus metrics, & MQTT |
+| **Ripping Engines** | [`docs/RIPPING_ENGINES.md`](RIPPING_ENGINES.md) | FFmpeg, Native IFO, HandBrake, MakeMKV, MakeMKV+FFmpeg, & Auto-Fallback |
 | **MEncoder & Legacy Codecs** | [`docs/MENCODER_AND_LEGACY_CODEC_STUDY.md`](MENCODER_AND_LEGACY_CODEC_STUDY.md) | Technical post-mortem, 3:2 pulldown history, & modern alternatives |
 | **Optical I/O & Bus Operations** | [`docs/CROSS_PLATFORM_OPTICAL_IO.md`](CROSS_PLATFORM_OPTICAL_IO.md) | Win32 SCSI Pass-Through, Linux ioctls, RipLock, & tray controls |
 | **Copy Protection & Recovery** | [`docs/COPY_PROTECTION_AND_BAD_SECTORS.md`](COPY_PROTECTION_AND_BAD_SECTORS.md) | CSS, ARccOS bad sectors, .BUP recovery, & sector rescue |

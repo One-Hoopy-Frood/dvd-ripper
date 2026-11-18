@@ -1,6 +1,6 @@
 # Testing & Code Coverage Engineering Guide - `dvd-ripper`
 
-`dvd-ripper` enforces comprehensive automated testing across domain, application, infrastructure, and presentation layers. As of **v0.5.0**, the suite contains **467 passing automated tests** (421 unit tests, 4 installer binary tests, 9 CLI integration tests, 13 LSP architecture contract tests, and 20 doc-tests) achieving **83.5%+ line coverage** across the entire workspace with zero warnings under `-D warnings`.
+`dvd-ripper` enforces comprehensive automated testing across domain, application, infrastructure, and presentation layers. As of **v0.5.0**, the suite contains **470 passing automated tests** (423 unit tests, 4 installer binary tests, 9 CLI integration tests, 14 LSP architecture contract tests, and 20 doc-tests) achieving **83.5%+ line coverage** across the entire workspace with zero warnings under `-D warnings`.
 
 ---
 

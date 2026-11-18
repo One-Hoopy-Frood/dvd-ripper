@@ -24,9 +24,11 @@ dvd-ripper = { version = "0.4.0", default-features = false, features = ["cli"] }
 
 | Feature | Description | Default |
 | :--- | :--- | :---: |
-| `cli` | Enables CLI parsing (`clap`), ANSI terminal formatting, and CLI runner use cases. | **Yes** |
-| `core` | Pure domain models, port interfaces, heuristics, and in-memory test doubles with zero GUI dependencies. | No |
-| `gui` | Compiles the native desktop GUI powered by `eframe`, `egui`, `rfd`, and `image`. | No |
+| `cli` | Enables CLI parsing (`clap`), ANSI terminal formatting, and CLI runner use cases. | **Yes** (in `default`) |
+| `gui` | Compiles the native desktop GUI powered by `eframe`, `egui`, `rfd`, and `image`. | **Yes** (in `default`) |
+| `core` | Pure domain models, port interfaces, heuristics, and in-memory test doubles with zero GUI/CLI dependencies. | No |
+| `api` | Embedded HTTP REST server, SSE event stream, and Prometheus `/metrics` exporter. | No |
+| `full` | Complete distribution bundle combining `cli`, `gui`, and `api`. | No |
 
 ---
 
@@ -42,6 +44,7 @@ use dvd_ripper::prelude::*;
 
 - **Domain Entities**: `DvdSource`, `DvdTitleInfo`, `TvEpisodeInfo`, `FilmMetadata`, `RipRecord`, `DiscInfo`, `DiscOptions`, `DriveStatusInfo`, `ProgressEvent`.
 - **Domain Ports**: `Transcoder`, `OpticalDrive`, `DiscInspector`, `TitleProber`, `TrayController`, `MetadataProvider`, `HistoryRepository`, `DiskSpaceGuard`, `Notifier`.
+- **Infrastructure Adapters**: `FfmpegTranscoder`, `NativeIfoTranscoder`, `HandBrakeTranscoder`, `MakeMkvTranscoder`, `MakeMkvFfmpegTranscoder`, `AutoFallbackTranscoder`.
 - **Composition Root**: `AppContainer`, `AppInitializer`.
 - **Test Doubles**: `VirtualOpticalDrive`, `InMemoryHistoryRepository`, `RecordingNotifier`, `FixedDiskSpaceGuard`, `RecordingProgressObserver`.
 
