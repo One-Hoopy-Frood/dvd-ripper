@@ -13,9 +13,11 @@ pub mod handbrake;
 pub mod makemkv;
 pub mod makemkv_ffmpeg;
 pub mod native_cell_extractor;
+pub mod registry;
 
 pub use fallback::AutoFallbackTranscoder;
 pub use handbrake::HandBrakeTranscoder;
 pub use makemkv::MakeMkvTranscoder;
 pub use makemkv_ffmpeg::MakeMkvFfmpegTranscoder;
 pub use native_cell_extractor::NativeIfoTranscoder;
+pub use registry::{EngineConfig, TranscoderFactory, TranscoderRegistry};

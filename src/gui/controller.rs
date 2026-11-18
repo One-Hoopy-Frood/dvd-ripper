@@ -419,87 +419,74 @@ impl GuiApplicationController {
             }
 
             let trans_options: crate::domain::ports::TranscodeOptions = (&base_args).into();
-            let ffmpeg_transcoder =
+            let engine_cfg = crate::infrastructure::engines::EngineConfig::new(
+                &spec.ffmpeg_path,
+                &spec.makemkv_path,
+                &spec.handbrake_path,
+            );
+            let registry = crate::infrastructure::engines::TranscoderRegistry::default();
+
+            let task_transcoder: Arc<dyn crate::domain::ports::transcoder::Transcoder> = if spec
+                .engine
+                .eq_ignore_ascii_case("auto")
+            {
+                // "auto": Smart fallback across engines
+                let ffmpeg_transcoder =
+                    Arc::new(crate::infrastructure::ffmpeg::FfmpegTranscoder::with_args(
+                        &spec.ffmpeg_path,
+                        base_args.clone(),
+                    ));
+                let native_transcoder = registry
+                    .create_transcoder("native", &engine_cfg, trans_options.clone())
+                    .unwrap_or_else(|_| {
+                        Arc::new(crate::infrastructure::engines::NativeIfoTranscoder::new(
+                            &spec.ffmpeg_path,
+                            trans_options.clone(),
+                        ))
+                    });
+
+                let mut engines: Vec<(
+                    &'static str,
+                    Arc<dyn crate::domain::ports::transcoder::Transcoder>,
+                )> = vec![
+                    ("ffmpeg", ffmpeg_transcoder),
+                    ("native_ifo", native_transcoder),
+                ];
+                if registry.is_available("handbrake", &engine_cfg)
+                    && let Ok(hb) =
+                        registry.create_transcoder("handbrake", &engine_cfg, trans_options.clone())
+                {
+                    engines.push(("handbrake", hb));
+                }
+                if registry.is_available("makemkv", &engine_cfg) {
+                    let mkv_engine = if trans_options.transcode {
+                        "makemkv+ffmpeg"
+                    } else {
+                        "makemkv"
+                    };
+                    if let Ok(mkv) =
+                        registry.create_transcoder(mkv_engine, &engine_cfg, trans_options)
+                    {
+                        engines.push((mkv_engine, mkv));
+                    }
+                }
+                Arc::new(crate::infrastructure::engines::AutoFallbackTranscoder::new(
+                    engines,
+                ))
+            } else if spec.engine.eq_ignore_ascii_case("ffmpeg") {
                 Arc::new(crate::infrastructure::ffmpeg::FfmpegTranscoder::with_args(
                     &spec.ffmpeg_path,
                     base_args.clone(),
-                ));
-            let native_transcoder =
-                Arc::new(crate::infrastructure::engines::NativeIfoTranscoder::new(
-                    &spec.ffmpeg_path,
-                    trans_options.clone(),
-                ));
-
-            let task_transcoder: Arc<dyn crate::domain::ports::transcoder::Transcoder> = match spec
-                .engine
-                .to_lowercase()
-                .as_str()
-            {
-                "handbrake" => Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
-                    &spec.handbrake_path,
-                    trans_options,
-                )),
-                "makemkv" => Arc::new(crate::infrastructure::engines::MakeMkvTranscoder::new(
-                    &spec.makemkv_path,
-                )),
-                "makemkv+ffmpeg" | "makemkv-ffmpeg" | "makemkv_ffmpeg" | "makemkv-compress" => {
-                    Arc::new(
-                        crate::infrastructure::engines::MakeMkvFfmpegTranscoder::new(
-                            &spec.makemkv_path,
+                ))
+            } else {
+                registry
+                    .create_transcoder(&spec.engine, &engine_cfg, trans_options)
+                    .unwrap_or_else(|_| {
+                        Arc::new(crate::infrastructure::ffmpeg::FfmpegTranscoder::with_args(
                             &spec.ffmpeg_path,
-                            trans_options,
-                        ),
-                    )
-                }
-                "native" => native_transcoder,
-                "ffmpeg" => ffmpeg_transcoder,
-                _ => {
-                    // "auto": Smart fallback across engines
-                    let mut engines: Vec<(
-                        &'static str,
-                        Arc<dyn crate::domain::ports::transcoder::Transcoder>,
-                    )> = vec![
-                        ("ffmpeg", ffmpeg_transcoder),
-                        ("native_ifo", native_transcoder),
-                    ];
-                    if crate::infrastructure::engines::HandBrakeTranscoder::is_available(
-                        &spec.handbrake_path,
-                    ) {
-                        engines.push((
-                            "handbrake",
-                            Arc::new(crate::infrastructure::engines::HandBrakeTranscoder::new(
-                                &spec.handbrake_path,
-                                trans_options.clone(),
-                            )),
-                        ));
-                    }
-                    if crate::infrastructure::engines::MakeMkvTranscoder::is_available(
-                        &spec.makemkv_path,
-                    ) {
-                        if trans_options.transcode {
-                            engines.push((
-                                "makemkv+ffmpeg",
-                                Arc::new(
-                                    crate::infrastructure::engines::MakeMkvFfmpegTranscoder::new(
-                                        &spec.makemkv_path,
-                                        &spec.ffmpeg_path,
-                                        trans_options,
-                                    ),
-                                ),
-                            ));
-                        } else {
-                            engines.push((
-                                "makemkv",
-                                Arc::new(crate::infrastructure::engines::MakeMkvTranscoder::new(
-                                    &spec.makemkv_path,
-                                )),
-                            ));
-                        }
-                    }
-                    Arc::new(crate::infrastructure::engines::AutoFallbackTranscoder::new(
-                        engines,
-                    ))
-                }
+                            base_args.clone(),
+                        ))
+                    })
             };
             let single_title_uc = crate::application::rip_single_title::RipSingleTitleUseCase::new(
                 task_transcoder.clone(),
