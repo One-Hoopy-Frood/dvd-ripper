@@ -14,8 +14,10 @@ pub mod entities;
 pub mod heuristics;
 pub mod naming;
 pub mod ports;
+pub mod value_objects;
 
 pub use entities::*;
 pub use heuristics::*;
 pub use naming::*;
 pub use ports::*;
+pub use value_objects::*;

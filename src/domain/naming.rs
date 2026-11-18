@@ -1,6 +1,7 @@
 //! Pure domain naming conventions for Plex/Jellyfin/Emby media library organization (SRP).
 
 use crate::domain::entities::options::OutputNamingSpec;
+use crate::domain::value_objects::sanitize_filename;
 use std::path::{Path, PathBuf};
 
 /// Formats a sanitized media folder/file stem `<Title> (<Year>)` or `<Title>`.
@@ -9,7 +10,7 @@ pub fn format_media_stem(title: Option<&str>, year: Option<u32>, fallback: &str)
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .unwrap_or(fallback);
-    let clean = crate::utils::sanitize_filename(raw);
+    let clean = sanitize_filename(raw);
     let base = if clean.is_empty() {
         fallback.to_string()
     } else {
@@ -238,7 +239,7 @@ pub fn resolve_tv_episode_output_path(
             show_name,
             season,
             episode,
-            crate::utils::sanitize_filename(t.trim()),
+            sanitize_filename(t.trim()),
             ext
         ),
         _ => format!("{} - S{:02}E{:02}.{}", show_name, season, episode, ext),

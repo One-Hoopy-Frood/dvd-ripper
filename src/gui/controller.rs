@@ -11,7 +11,6 @@ use crate::AppContainer;
 use crate::cli::{Args, EncodingOptions};
 use crate::domain::entities::disc::TvEpisodeInfo;
 use crate::domain::entities::job::RipRecord;
-use crate::domain::ports::post_processor::PostProcessContext;
 use crate::ffmpeg::{
     ProgressEvent, detect_tv_episodes, resolve_output_path, resolve_tv_output_path_with_title,
 };
@@ -834,8 +833,7 @@ impl GuiApplicationController {
             }
 
             let post_title = spec.film_name.unwrap_or_else(|| "DVD Rip".to_string());
-            let post_context = PostProcessContext::from_args(
-                &base_args,
+            let post_context = base_args.to_post_process_context(
                 last_output_file.clone(),
                 &post_title,
                 spec.film_year,

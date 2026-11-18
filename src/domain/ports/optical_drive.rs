@@ -26,10 +26,7 @@ pub trait TrayController: Send + Sync {
 pub trait DriveIdentity: Send + Sync {
     fn get_path(&self) -> &Path;
     fn read_volume_label(&self) -> Option<String>;
-    fn compute_fingerprint(&self) -> String {
-        let p = self.get_path().to_string_lossy();
-        crate::dvd::compute_disc_fingerprint(&p)
-    }
+    fn compute_fingerprint(&self) -> String;
 }
 
 /// Fine-grained hardware abstraction for discovering available title tracks on an optical disc.

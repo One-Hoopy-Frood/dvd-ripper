@@ -106,129 +106,34 @@ impl Default for OutputNamingSpec {
     }
 }
 
-impl From<&crate::cli::Args> for VideoEncodingSpec {
-    fn from(args: &crate::cli::Args) -> Self {
-        Self {
-            codec: args.codec.clone(),
-            profile: args.profile.clone(),
-            preset: args.preset.clone(),
-            crf: args.crf,
-            target_size_mb: args.target_size_mb,
-            hwaccel: args.hwaccel.clone(),
-            hwaccel_fallback: args.hwaccel_fallback,
-            tonemap: args.tonemap.clone(),
-        }
-    }
-}
-
-impl From<&crate::cli::Args> for VideoFilterSpec {
-    fn from(args: &crate::cli::Args) -> Self {
-        Self {
-            deinterlace: args.deinterlace,
-            deinterlace_algo: args.deinterlace_algo.clone(),
-            denoise: args.denoise,
-            auto_crop: args.auto_crop,
-            detelecine: args.detelecine,
-        }
-    }
-}
-
-impl From<&crate::cli::Args> for AudioEncodingSpec {
-    fn from(args: &crate::cli::Args) -> Self {
-        Self {
-            all_audio: args.all_audio,
-            normalize_audio: args.normalize_audio,
-            norm_target: args.norm_target,
-            dual_audio: args.dual_audio,
-            audio_track: args.audio_track,
-            audio_lang: args.audio_lang.clone(),
-            auto_audio_pref: args.auto_audio_pref.clone(),
-            audio_title: args.audio_title.clone(),
-            audio_downmix: args.audio_downmix.clone(),
-        }
-    }
-}
-
-impl From<&crate::cli::Args> for SubtitleSpec {
-    fn from(args: &crate::cli::Args) -> Self {
-        Self {
-            subtitles: args.subtitles,
-            sub_lang: args.sub_lang.clone(),
-            sub_format: args.sub_format.clone(),
-            sub_forced_only: args.sub_forced_only,
-            sub_default: args.sub_default,
-            sub_burnin: args.sub_burnin,
-            sub_external_srt: args.sub_external_srt,
-            ocr: args.ocr,
-            ocr_lang: args.ocr_lang.clone(),
-        }
-    }
-}
-
-impl From<&crate::cli::Args> for DiscSelectionSpec {
-    fn from(args: &crate::cli::Args) -> Self {
-        Self {
-            title_number: args.title,
-            start_chapter: args.start_chapter,
-            end_chapter: args.end_chapter,
-            split_chapters: args.split_chapters,
-            angle: args.angle,
-            rip_extras: args.rip_extras,
-            sector_retries: args.sector_retries,
-        }
-    }
-}
-
-impl From<&crate::cli::Args> for OutputNamingSpec {
-    fn from(args: &crate::cli::Args) -> Self {
-        Self {
-            out_dir: args.out_dir.clone(),
-            films_dir: args.films_dir.clone(),
-            tv_dir: args.tv_dir.clone(),
-            explicit_output: args.output.clone(),
-            mkv: args.mkv,
-            iso: args.iso,
-            no_overwrite: args.no_overwrite,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_segregated_specs_from_args() {
-        let mut args = crate::cli::Args::default();
-        args.codec = "hevc".to_string();
-        args.crf = Some(20);
-        args.auto_crop = true;
-        args.detelecine = true;
-        args.all_audio = true;
-        args.subtitles = true;
-        args.start_chapter = Some(2);
-        args.end_chapter = Some(5);
-        args.mkv = true;
+    fn test_segregated_specs_defaults() {
+        let video = VideoEncodingSpec::default();
+        assert_eq!(video.codec, "h264");
+        assert_eq!(video.preset, "slow");
+        assert_eq!(video.crf, None);
 
-        let video = VideoEncodingSpec::from(&args);
-        assert_eq!(video.codec, "hevc");
-        assert_eq!(video.crf, Some(20));
+        let filters = VideoFilterSpec::default();
+        assert!(!filters.auto_crop);
+        assert!(!filters.detelecine);
 
-        let filters = VideoFilterSpec::from(&args);
-        assert!(filters.auto_crop);
-        assert!(filters.detelecine);
+        let audio = AudioEncodingSpec::default();
+        assert!(!audio.all_audio);
 
-        let audio = AudioEncodingSpec::from(&args);
-        assert!(audio.all_audio);
+        let subs = SubtitleSpec::default();
+        assert!(!subs.subtitles);
 
-        let subs = SubtitleSpec::from(&args);
-        assert!(subs.subtitles);
+        let disc = DiscSelectionSpec::default();
+        assert_eq!(disc.title_number, 0);
+        assert_eq!(disc.start_chapter, None);
 
-        let disc = DiscSelectionSpec::from(&args);
-        assert_eq!(disc.start_chapter, Some(2));
-        assert_eq!(disc.end_chapter, Some(5));
-
-        let naming = OutputNamingSpec::from(&args);
-        assert!(naming.mkv);
+        let naming = OutputNamingSpec::default();
+        assert_eq!(naming.out_dir, "Films");
+        assert!(!naming.mkv);
+        assert!(!naming.iso);
     }
 }

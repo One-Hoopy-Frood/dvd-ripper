@@ -483,26 +483,7 @@ pub fn sanitize_cli_path_arg(path_str: &str) -> String {
 }
 
 /// Sanitizes a movie title to make it safe for filesystem folders and file names.
-pub fn sanitize_filename(name: &str) -> String {
-    let sanitized: String = name
-        .chars()
-        .map(|c| match c {
-            ':' => ' ',                                            // Replace colons with spaces
-            '\\' | '/' | '*' | '?' | '"' | '<' | '>' | '|' => '_', // Replace other invalid characters
-            c if c.is_control() => ' ', // Replace control characters with spaces
-            _ => c,
-        })
-        .collect();
-
-    let mut result = String::with_capacity(sanitized.len());
-    for word in sanitized.split_whitespace() {
-        if !result.is_empty() {
-            result.push(' ');
-        }
-        result.push_str(word);
-    }
-    result
-}
+pub use crate::domain::value_objects::sanitize_filename;
 
 /// Parses an FFmpeg timestamp string (HH:MM:SS.xx) into total seconds.
 pub fn parse_duration(s: &str) -> Option<f64> {

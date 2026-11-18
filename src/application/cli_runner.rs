@@ -2,7 +2,6 @@
 
 use crate::AppContainer;
 use crate::cli::Args;
-use crate::domain::ports::post_processor::PostProcessContext;
 use anyhow::{Result, anyhow};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -507,8 +506,7 @@ impl CliApplicationRunner {
         }
 
         let post_title = title_name.unwrap_or_else(|| "DVD Rip".to_string());
-        let post_context = PostProcessContext::from_args(
-            &args,
+        let post_context = args.to_post_process_context(
             last_output_file,
             &post_title,
             title_year,

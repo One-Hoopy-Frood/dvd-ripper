@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use anyhow::{Result, anyhow};
 
 use crate::domain::entities::disc::{DiscCopyProtectionReport, DvdTitleInfo};
-use crate::domain::entities::job::RipRecord;
+use crate::domain::entities::job::{JobItem, RipRecord};
 use crate::domain::ports::optical_drive::{
     DriveIdentity, OpticalDrive, ProtectionInspector, TitleProber, TrayOperator,
 };
@@ -225,7 +225,7 @@ impl ProgressObserver for RecordingProgressObserver {
 /// Thread-safe, in-memory [`crate::domain::ports::JobQueueRepository`] test double for isolated concurrent testing.
 #[derive(Debug, Default)]
 pub struct InMemoryJobQueueRepository {
-    jobs: Mutex<Vec<crate::queue::JobItem>>,
+    jobs: Mutex<Vec<JobItem>>,
 }
 
 impl InMemoryJobQueueRepository {
@@ -254,13 +254,13 @@ impl crate::domain::ports::JobQueueRepository for InMemoryJobQueueRepository {
     ) -> String {
         let mut jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
         let id = format!("job_{}", jobs.len() + 1);
-        jobs.push(crate::queue::JobItem {
+        jobs.push(JobItem {
             id: id.clone(),
             title: title.to_string(),
             media_type: media_type.to_string(),
             drive: drive.to_string(),
             status: "Queued".to_string(),
-            timestamp: crate::utils::now_timestamp_str(),
+            timestamp: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
             spool_path: None,
             output_path: None,
             progress: 0.0,
@@ -272,7 +272,7 @@ impl crate::domain::ports::JobQueueRepository for InMemoryJobQueueRepository {
         id
     }
 
-    fn list_jobs(&self) -> Vec<crate::queue::JobItem> {
+    fn list_jobs(&self) -> Vec<JobItem> {
         self.jobs.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
@@ -286,7 +286,7 @@ impl crate::domain::ports::JobQueueRepository for InMemoryJobQueueRepository {
         }
     }
 
-    fn next_ready_job(&self) -> Option<crate::queue::JobItem> {
+    fn next_ready_job(&self) -> Option<JobItem> {
         let jobs = self.jobs.lock().unwrap_or_else(|e| e.into_inner());
         jobs.iter()
             .find(|j| j.status != "Done" && j.status != "Failed")

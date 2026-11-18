@@ -1014,6 +1014,139 @@ impl From<&crate::domain::entities::disc::DiscOptions> for Args {
     }
 }
 
+impl From<&Args> for crate::domain::entities::options::VideoEncodingSpec {
+    fn from(args: &Args) -> Self {
+        Self {
+            codec: args.codec.clone(),
+            profile: args.profile.clone(),
+            preset: args.preset.clone(),
+            crf: args.crf,
+            target_size_mb: args.target_size_mb,
+            hwaccel: args.hwaccel.clone(),
+            hwaccel_fallback: args.hwaccel_fallback,
+            tonemap: args.tonemap.clone(),
+        }
+    }
+}
+
+impl From<&Args> for crate::domain::entities::options::VideoFilterSpec {
+    fn from(args: &Args) -> Self {
+        Self {
+            deinterlace: args.deinterlace,
+            deinterlace_algo: args.deinterlace_algo.clone(),
+            denoise: args.denoise,
+            auto_crop: args.auto_crop,
+            detelecine: args.detelecine,
+        }
+    }
+}
+
+impl From<&Args> for crate::domain::entities::options::AudioEncodingSpec {
+    fn from(args: &Args) -> Self {
+        Self {
+            all_audio: args.all_audio,
+            normalize_audio: args.normalize_audio,
+            norm_target: args.norm_target,
+            dual_audio: args.dual_audio,
+            audio_track: args.audio_track,
+            audio_lang: args.audio_lang.clone(),
+            auto_audio_pref: args.auto_audio_pref.clone(),
+            audio_title: args.audio_title.clone(),
+            audio_downmix: args.audio_downmix.clone(),
+        }
+    }
+}
+
+impl From<&Args> for crate::domain::entities::options::SubtitleSpec {
+    fn from(args: &Args) -> Self {
+        Self {
+            subtitles: args.subtitles,
+            sub_lang: args.sub_lang.clone(),
+            sub_format: args.sub_format.clone(),
+            sub_forced_only: args.sub_forced_only,
+            sub_default: args.sub_default,
+            sub_burnin: args.sub_burnin,
+            sub_external_srt: args.sub_external_srt,
+            ocr: args.ocr,
+            ocr_lang: args.ocr_lang.clone(),
+        }
+    }
+}
+
+impl From<&Args> for crate::domain::entities::options::DiscSelectionSpec {
+    fn from(args: &Args) -> Self {
+        Self {
+            title_number: args.title,
+            start_chapter: args.start_chapter,
+            end_chapter: args.end_chapter,
+            split_chapters: args.split_chapters,
+            angle: args.angle,
+            rip_extras: args.rip_extras,
+            sector_retries: args.sector_retries,
+        }
+    }
+}
+
+impl From<&Args> for crate::domain::entities::options::OutputNamingSpec {
+    fn from(args: &Args) -> Self {
+        Self {
+            out_dir: args.out_dir.clone(),
+            films_dir: args.films_dir.clone(),
+            tv_dir: args.tv_dir.clone(),
+            explicit_output: args.output.clone(),
+            mkv: args.mkv,
+            iso: args.iso,
+            no_overwrite: args.no_overwrite,
+        }
+    }
+}
+
+impl Args {
+    /// Builds a [`crate::domain::ports::post_processor::PostProcessContext`] domain value object from CLI configuration and rip details.
+    pub fn to_post_process_context(
+        &self,
+        output_file: Option<std::path::PathBuf>,
+        title: &str,
+        year: Option<u32>,
+        dvd_path: std::path::PathBuf,
+        poster_bytes: Option<Vec<u8>>,
+    ) -> crate::domain::ports::post_processor::PostProcessContext {
+        let media_type = if self.tv { "TV Series" } else { "Movie" };
+        crate::domain::ports::post_processor::PostProcessContext {
+            output_file,
+            title: title.to_string(),
+            year,
+            season: if self.tv { Some(self.season) } else { None },
+            episode: if self.tv {
+                Some(self.start_episode)
+            } else {
+                None
+            },
+            media_type: media_type.to_string(),
+            poster_bytes,
+            dvd_path,
+            nfo_enabled: self.nfo,
+            nfo_tags: self.tags.clone(),
+            checksum_enabled: self.checksum,
+            audit_log_path: self.audit_log.as_ref().map(std::path::PathBuf::from),
+            auto_cleanup_days: self.auto_cleanup_days,
+            post_script: self.post_script.clone(),
+            media_servers_enabled: self.jellyfin_url.is_some()
+                || self.plex_url.is_some()
+                || self.emby_url.is_some(),
+            jellyfin_url: self.jellyfin_url.clone(),
+            jellyfin_key: self.jellyfin_key.clone(),
+            plex_url: self.plex_url.clone(),
+            plex_token: self.plex_token.clone(),
+            emby_url: self.emby_url.clone(),
+            emby_key: self.emby_key.clone(),
+            no_eject: self.no_eject,
+            eject_autoclose_secs: self.eject_autoclose,
+            spindown: self.spindown,
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::field_reassign_with_default)]
 mod tests {
@@ -1192,5 +1325,57 @@ mod tests {
         assert!(args.hwaccel_fallback);
         assert_eq!(args.norm_target, Some(-14));
         assert_eq!(args.audio_downmix.as_deref(), Some("5.1"));
+    }
+
+    #[test]
+    fn test_domain_specs_conversion_and_post_process_context() {
+        let mut args = Args::default();
+        args.codec = "hevc".to_string();
+        args.crf = Some(20);
+        args.auto_crop = true;
+        args.detelecine = true;
+        args.all_audio = true;
+        args.subtitles = true;
+        args.start_chapter = Some(2);
+        args.end_chapter = Some(5);
+        args.mkv = true;
+        args.tv = true;
+        args.season = 3;
+        args.start_episode = 4;
+        args.nfo = true;
+
+        let video = crate::domain::entities::options::VideoEncodingSpec::from(&args);
+        assert_eq!(video.codec, "hevc");
+        assert_eq!(video.crf, Some(20));
+
+        let filters = crate::domain::entities::options::VideoFilterSpec::from(&args);
+        assert!(filters.auto_crop);
+        assert!(filters.detelecine);
+
+        let audio = crate::domain::entities::options::AudioEncodingSpec::from(&args);
+        assert!(audio.all_audio);
+
+        let subs = crate::domain::entities::options::SubtitleSpec::from(&args);
+        assert!(subs.subtitles);
+
+        let disc = crate::domain::entities::options::DiscSelectionSpec::from(&args);
+        assert_eq!(disc.start_chapter, Some(2));
+        assert_eq!(disc.end_chapter, Some(5));
+
+        let naming = crate::domain::entities::options::OutputNamingSpec::from(&args);
+        assert!(naming.mkv);
+
+        let post_ctx = args.to_post_process_context(
+            Some(std::path::PathBuf::from("tv.mp4")),
+            "Lost",
+            Some(2004),
+            std::path::PathBuf::from("E:\\"),
+            None,
+        );
+        assert_eq!(post_ctx.media_type, "TV Series");
+        assert_eq!(post_ctx.title, "Lost");
+        assert_eq!(post_ctx.season, Some(3));
+        assert_eq!(post_ctx.episode, Some(4));
+        assert!(post_ctx.nfo_enabled);
     }
 }

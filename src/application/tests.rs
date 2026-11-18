@@ -125,6 +125,9 @@ mod tests {
         fn read_volume_label(&self) -> Option<String> {
             self.label.clone()
         }
+        fn compute_fingerprint(&self) -> String {
+            format!("fp_{}", self.label.as_deref().unwrap_or("unknown"))
+        }
     }
 
     impl TitleProber for MockOpticalDrive {
